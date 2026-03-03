@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "N8N_API_URL": "https://n8n-n8n.rowjve.easypanel.host",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      }
+    }
+  }
+}
