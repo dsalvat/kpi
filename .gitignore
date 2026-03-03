@@ -43,3 +43,6 @@ backend/alembic/versions/__pycache__/
 
 # Excel data (large binary)
 *.xlsx
+
+# Local SQLite databases
+*.db
