@@ -6,13 +6,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.kpi import KPIDefinition, KPIValue
-from app.schemas.kpi import KPIValueCreate
+from app.schemas.kpi import KPIValueCreate, KPIValueUpdate
 from app.services.calculations import kpi_status, kr_progress
 
 
-async def list_kpis(db: AsyncSession, category: str | None = None, year: int | None = None):
+GROUP_PREFIX = {
+    "serveis": "SRV-",
+    "projectes": "PRJ-M",
+}
+
+
+async def list_kpis(
+    db: AsyncSession,
+    category: str | None = None,
+    group: str | None = None,
+    year: int | None = None,
+):
     stmt = select(KPIDefinition).where(KPIDefinition.active.is_(True))
-    if category:
+    if group and group in GROUP_PREFIX:
+        stmt = stmt.where(KPIDefinition.code.startswith(GROUP_PREFIX[group]))
+    elif category:
         stmt = stmt.where(KPIDefinition.category == category)
     stmt = stmt.order_by(KPIDefinition.code)
     result = await db.execute(stmt)
@@ -98,6 +111,39 @@ async def create_kpi_value(db: AsyncSession, code: str, data: KPIValueCreate) ->
     await db.commit()
     await db.refresh(value)
     return value
+
+
+async def update_kpi_value(
+    db: AsyncSession, code: str, value_id: str, data: KPIValueUpdate
+) -> KPIValue | None:
+    kpi = await get_kpi_by_code(db, code)
+    if not kpi:
+        return None
+    stmt = select(KPIValue).where(KPIValue.id == value_id, KPIValue.kpi_id == kpi.id)
+    result = await db.execute(stmt)
+    value = result.scalar_one_or_none()
+    if not value:
+        return None
+    value.value = data.value
+    value.notes = data.notes
+    value.collected_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(value)
+    return value
+
+
+async def delete_kpi_value(db: AsyncSession, code: str, value_id: str) -> bool:
+    kpi = await get_kpi_by_code(db, code)
+    if not kpi:
+        return False
+    stmt = select(KPIValue).where(KPIValue.id == value_id, KPIValue.kpi_id == kpi.id)
+    result = await db.execute(stmt)
+    value = result.scalar_one_or_none()
+    if not value:
+        return False
+    await db.delete(value)
+    await db.commit()
+    return True
 
 
 async def get_kpi_status(db: AsyncSession, code: str):

@@ -33,6 +33,11 @@ export interface KPIValueCreate {
   notes?: string;
 }
 
+export interface KPIValueUpdate {
+  value: number;
+  notes?: string;
+}
+
 export interface KPIStatusResponse {
   code: string;
   name: string;

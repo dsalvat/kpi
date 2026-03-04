@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { Dashboard } from "@/types/dashboard";
-import type { KPIDefinition, KPIValue, KPIValueCreate, KPIStatusResponse } from "@/types/kpi";
+import type { KPIDefinition, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
 import type { Project } from "@/types/project";
 import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
@@ -34,14 +34,18 @@ export const dashboardApi = {
 };
 
 export const kpiApi = {
-  list: (category?: string, year?: number) =>
-    api.get<KPIDefinition[]>("/kpis/", { params: { category, year } }),
+  list: (category?: string, year?: number, group?: string) =>
+    api.get<KPIDefinition[]>("/kpis/", { params: { category, group, year } }),
   getValues: (code: string, year: number) =>
-    api.get<KPIValue[]>(`/kpis/${code}/values/`, { params: { year } }),
+    api.get<KPIValue[]>(`/kpis/${code}/values`, { params: { year } }),
   createValue: (code: string, data: KPIValueCreate) =>
-    api.post<KPIValue>(`/kpis/${code}/values/`, data),
+    api.post<KPIValue>(`/kpis/${code}/values`, data),
+  updateValue: (code: string, valueId: string, data: KPIValueUpdate) =>
+    api.put<KPIValue>(`/kpis/${code}/values/${valueId}`, data),
+  deleteValue: (code: string, valueId: string) =>
+    api.delete(`/kpis/${code}/values/${valueId}`),
   getStatus: (code: string) =>
-    api.get<KPIStatusResponse>(`/kpis/${code}/status/`),
+    api.get<KPIStatusResponse>(`/kpis/${code}/status`),
 };
 
 export const projectApi = {
@@ -61,7 +65,7 @@ export const valueApi = {
   getSummary: (year?: number) =>
     api.get<ValueSummary>("/value/", { params: { year } }),
   getRoi: (year?: number) =>
-    api.get<ROI>("/value/roi/", { params: { year } }),
+    api.get<ROI>("/value/roi", { params: { year } }),
 };
 
 export default api;

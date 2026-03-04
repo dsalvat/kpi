@@ -7,23 +7,23 @@ const statusConfig: Record<
 > = {
   ok: {
     label: "OK",
-    dotClass: "bg-emerald-500",
-    badgeClass: "bg-emerald-50 text-emerald-700 ring-emerald-600/10",
+    dotClass: "bg-emerald-400",
+    badgeClass: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
   },
   warning: {
     label: "Alerta",
-    dotClass: "bg-amber-500",
-    badgeClass: "bg-amber-50 text-amber-700 ring-amber-600/10",
+    dotClass: "bg-amber-400",
+    badgeClass: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
   },
   ko: {
     label: "KO",
-    dotClass: "bg-red-500",
-    badgeClass: "bg-red-50 text-red-700 ring-red-600/10",
+    dotClass: "bg-red-400",
+    badgeClass: "bg-red-500/10 text-red-400 ring-red-500/20",
   },
   no_data: {
     label: "Sense dades",
-    dotClass: "bg-slate-400",
-    badgeClass: "bg-slate-50 text-slate-500 ring-slate-500/10",
+    dotClass: "bg-slate-500",
+    badgeClass: "bg-slate-500/10 text-slate-400 ring-slate-500/20",
   },
 };
 

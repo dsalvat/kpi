@@ -5,49 +5,49 @@
 @layer base {
   :root {
     /* ── Brand ── */
-    --color-primary: #0f1d35;
-    --color-primary-light: #1a2d4f;
-    --color-secondary: #2563eb;
-    --color-secondary-light: #3b82f6;
-    --color-accent: #06b6d4;
+    --color-primary: #060b18;
+    --color-primary-light: #0c1529;
+    --color-secondary: #3b82f6;
+    --color-secondary-light: #60a5fa;
+    --color-accent: #22d3ee;
 
     /* ── Semantic ── */
-    --color-success: #059669;
-    --color-success-light: #d1fae5;
-    --color-warning: #d97706;
-    --color-warning-light: #fef3c7;
-    --color-danger: #dc2626;
-    --color-danger-light: #fee2e2;
+    --color-success: #10b981;
+    --color-success-light: rgba(16, 185, 129, 0.12);
+    --color-warning: #f59e0b;
+    --color-warning-light: rgba(245, 158, 11, 0.12);
+    --color-danger: #ef4444;
+    --color-danger-light: rgba(239, 68, 68, 0.12);
 
     /* ── Domain ── */
-    --color-blue-money: #1e40af;
-    --color-blue-money-light: #dbeafe;
-    --color-green-money: #047857;
-    --color-green-money-light: #d1fae5;
-    --color-okr: #7c3aed;
-    --color-okr-light: #ede9fe;
+    --color-blue-money: #3b82f6;
+    --color-blue-money-light: rgba(59, 130, 246, 0.12);
+    --color-green-money: #10b981;
+    --color-green-money-light: rgba(16, 185, 129, 0.12);
+    --color-okr: #a78bfa;
+    --color-okr-light: rgba(167, 139, 250, 0.12);
 
     /* ── Surface ── */
-    --color-bg: #f8fafc;
-    --color-surface: #ffffff;
-    --color-surface-elevated: #ffffff;
-    --color-border: #e2e8f0;
-    --color-border-subtle: #f1f5f9;
+    --color-bg: #060b18;
+    --color-surface: #0d1526;
+    --color-surface-elevated: #111d33;
+    --color-border: #1e293b;
+    --color-border-subtle: #162032;
 
     /* ── Text ── */
-    --color-text-primary: #0f172a;
-    --color-text-secondary: #475569;
-    --color-text-tertiary: #94a3b8;
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-text-tertiary: #64748b;
 
     /* ── Status ── */
-    --status-ok: #059669;
-    --status-warning: #d97706;
-    --status-ko: #dc2626;
-    --status-nodata: #94a3b8;
+    --status-ok: #10b981;
+    --status-warning: #f59e0b;
+    --status-ko: #ef4444;
+    --status-nodata: #475569;
 
     /* ── Shadows ── */
-    --shadow-card: 0 0 0 1px rgb(0 0 0 / 0.03), 0 1px 3px 0 rgb(0 0 0 / 0.04);
-    --shadow-card-hover: 0 0 0 1px rgb(0 0 0 / 0.05), 0 4px 12px 0 rgb(0 0 0 / 0.06);
+    --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04), 0 2px 8px 0 rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px 0 rgb(0 0 0 / 0.5);
   }
 
   body {
@@ -101,11 +101,23 @@
   }
   .card-interactive:hover {
     box-shadow: var(--shadow-card-hover);
+    border-color: rgb(255 255 255 / 0.08);
     transform: translateY(-1px);
   }
 
   .gradient-sidebar {
-    background: linear-gradient(180deg, #0f1d35 0%, #162544 50%, #1a2d52 100%);
+    background: linear-gradient(180deg, #060b18 0%, #091120 50%, #0c1628 100%);
+  }
+
+  /* Dark-mode table and hover helpers */
+  .dark-table-header {
+    background: rgb(255 255 255 / 0.03);
+  }
+  .dark-hover:hover {
+    background: rgb(255 255 255 / 0.03);
+  }
+  .dark-progress-track {
+    background: rgb(255 255 255 / 0.08);
   }
 }
 
@@ -122,6 +134,18 @@
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+@keyframes glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .animate-fade-in-up {
   animation: fadeInUp 0.4s ease-out forwards;
@@ -132,9 +156,18 @@
   opacity: 0;
 }
 .animate-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, #111d33 25%, #1a2d4a 50%, #111d33 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.25s ease-out forwards;
+}
+.animate-fade-backdrop {
+  animation: fadeInBackdrop 0.2s ease-out forwards;
 }
 
 .stagger-children > * {

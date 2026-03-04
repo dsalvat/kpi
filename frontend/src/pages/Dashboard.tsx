@@ -1,22 +1,53 @@
+import { useMemo } from "react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAppStore } from "@/store";
-import { KPICard } from "@/components/kpis/KPICard";
 import { MoneyCard } from "@/components/value/MoneyCard";
-import { KRProgressBar } from "@/components/okrs/KRProgressBar";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { cn, formatPercent } from "@/lib/utils";
-import { AlertCircle } from "lucide-react";
+import { cn, formatNumber, formatPercent, formatCurrency } from "@/lib/utils";
+import type { KPIDefinition, KPIStatus } from "@/types/kpi";
+import {
+  AlertCircle,
+  Monitor,
+  FolderKanban,
+  Target,
+  TrendingUp,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 
 export default function Dashboard() {
   const year = useAppStore((s) => s.selectedYear);
   const { data, isLoading, error } = useDashboard();
 
+  // Split KPIs into SRV-* and PRJ-M*
+  const { srvKPIs, prjKPIs } = useMemo(() => {
+    if (!data?.kpi_summary) return { srvKPIs: [], prjKPIs: [] };
+    return {
+      srvKPIs: data.kpi_summary.filter((k) => k.code.startsWith("SRV")),
+      prjKPIs: data.kpi_summary.filter((k) => k.code.startsWith("PRJ")),
+    };
+  }, [data]);
+
+  // KPI status counts for serveis
+  const srvCounts = useMemo(() => {
+    const c = { ok: 0, warning: 0, ko: 0, no_data: 0 };
+    for (const k of srvKPIs) {
+      const s = (k.current_status ?? "no_data") as KPIStatus;
+      c[s]++;
+    }
+    return c;
+  }, [srvKPIs]);
+
   if (error) {
     return (
       <div className="card flex items-center gap-4 border-l-[3px] border-l-danger p-6">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-danger-light">
-          <AlertCircle className="h-5 w-5 text-danger" strokeWidth={1.8} />
+          <AlertCircle
+            className="h-5 w-5 text-danger"
+            strokeWidth={1.8}
+          />
         </div>
         <div>
           <p className="text-sm font-medium text-text-primary">
@@ -31,164 +62,197 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Page header */}
+    <div className="space-y-6">
+      {/* Header */}
       <div className="animate-fade-in">
         <h1 className="text-display text-[28px] font-bold text-text-primary">
           {"Dashboard "}
-          <span className="text-data text-lg font-medium text-text-tertiary">{year}</span>
+          <span className="text-data text-lg font-medium text-text-tertiary">
+            {year}
+          </span>
         </h1>
         <p className="mt-1 text-[13px] text-text-tertiary">
           Resum executiu del Departament de Sistemes IT
         </p>
       </div>
 
-      {/* KPIs Operatius */}
-      <section className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
-        <SectionHeader title="KPIs Operatius" />
+      {/* ── 1. KPIs Serveis — compact table ── */}
+      <section
+        className="animate-fade-in-up"
+        style={{ animationDelay: "0.03s" }}
+      >
+        <SectionHeader title="KPIs Serveis" icon={Monitor}>
+          {!isLoading && srvKPIs.length > 0 && (
+            <div className="flex items-center gap-2">
+              <StatusCount status="ok" count={srvCounts.ok} />
+              <StatusCount status="warning" count={srvCounts.warning} />
+              <StatusCount status="ko" count={srvCounts.ko} />
+            </div>
+          )}
+        </SectionHeader>
+
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : data?.kpi_summary && data.kpi_summary.length > 0 ? (
-          <div className="stagger-children grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {data.kpi_summary.map((kpi) => (
-              <KPICard key={kpi.id} kpi={kpi} />
-            ))}
-          </div>
+          <SkeletonCard />
+        ) : srvKPIs.length > 0 ? (
+          <KPICompactTable kpis={srvKPIs} />
         ) : (
           <EmptyState
             title="Sense KPIs"
-            description="No hi ha KPIs definits per a aquest any."
+            description="No hi ha KPIs de serveis."
           />
         )}
       </section>
 
-      {/* Projectes + Valor Negoci */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Projects */}
-        <section className="animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-          <SectionHeader title="Projectes IT" />
+      {/* ── 2. Projectes + Valor al Negoci — side by side ── */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Projectes */}
+        <section
+          className="animate-fade-in-up"
+          style={{ animationDelay: "0.06s" }}
+        >
+          <SectionHeader title="Projectes IT" icon={FolderKanban} />
           {isLoading ? (
             <SkeletonCard />
           ) : data?.projects_summary ? (
-            <div className="card p-6">
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-                <StatBlock
+            <div className="card p-5">
+              <div className="grid grid-cols-4 gap-3">
+                <StatPill
                   label="Actius"
                   value={data.projects_summary.active}
-                  color="text-secondary"
+                  icon={Clock}
+                  color="text-blue-600"
                 />
-                <StatBlock
+                <StatPill
                   label="En risc"
                   value={data.projects_summary.at_risk}
-                  color="text-warning"
+                  icon={AlertTriangle}
+                  color="text-amber-600"
                 />
-                <StatBlock
+                <StatPill
                   label="Completats"
                   value={data.projects_summary.completed}
-                  color="text-success"
+                  icon={CheckCircle2}
+                  color="text-emerald-600"
                 />
-                <StatBlock
-                  label="Bloquejats"
-                  value={data.projects_summary.blocked}
-                  color="text-danger"
+                <StatPill
+                  label="Compl. mitja"
+                  value={
+                    data.projects_summary.avg_completion_pct != null
+                      ? `${Math.round(data.projects_summary.avg_completion_pct)}%`
+                      : "—"
+                  }
+                  color="text-text-primary"
                 />
               </div>
-              {data.projects_summary.avg_completion_pct != null && (
-                <div className="mt-5 border-t border-border-subtle pt-4">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
-                    Completament mitja
-                  </p>
-                  <p className="mt-1 text-data text-xl font-semibold text-text-primary">
-                    {Math.round(data.projects_summary.avg_completion_pct)}%
-                  </p>
+
+              {/* Mini project KPIs */}
+              {prjKPIs.length > 0 && (
+                <div className="mt-4 border-t border-border-subtle pt-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {prjKPIs.slice(0, 4).map((kpi) => (
+                      <MiniKPI key={kpi.id} kpi={kpi} />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           ) : null}
         </section>
 
-        {/* Value */}
-        <section className="animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
-          <SectionHeader title="Valor al Negoci" />
+        {/* Valor al Negoci */}
+        <section
+          className="animate-fade-in-up"
+          style={{ animationDelay: "0.09s" }}
+        >
+          <SectionHeader title="Valor al Negoci" icon={TrendingUp} />
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <SkeletonCard />
               <SkeletonCard />
             </div>
           ) : data?.value_summary ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <MoneyCard
-                type="blue"
-                title="Blue Money"
-                subtitle="Eficiencia IT"
-                total={data.value_summary.blue_money_total}
-                target={data.value_summary.blue_money_target}
-              />
-              <MoneyCard
-                type="green"
-                title="Green Money"
-                subtitle="Valor al Negoci"
-                total={data.value_summary.green_money_total}
-                target={data.value_summary.green_money_target}
-              />
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MoneyCard
+                  type="blue"
+                  title="Blue Money"
+                  subtitle="Eficiencia IT"
+                  total={data.value_summary.blue_money_total}
+                  target={data.value_summary.blue_money_target}
+                />
+                <MoneyCard
+                  type="green"
+                  title="Green Money"
+                  subtitle="Valor al Negoci"
+                  total={data.value_summary.green_money_total}
+                  target={data.value_summary.green_money_target}
+                />
+              </div>
+              <div className="card flex items-center justify-between px-5 py-3">
+                <span className="text-[12px] font-medium uppercase tracking-wider text-text-tertiary">
+                  Valor total IT
+                </span>
+                <span className="text-data text-lg font-bold text-secondary">
+                  {formatCurrency(
+                    data.value_summary.blue_money_total +
+                      data.value_summary.green_money_total,
+                  )}
+                </span>
+              </div>
             </div>
           ) : null}
         </section>
       </div>
 
-      {/* OKRs */}
-      <section className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="mb-5 flex items-center justify-between">
-          <SectionHeader title={`OKRs ${year}`} noMargin />
+      {/* ── 3. OKRs — compact progress bars ── */}
+      <section
+        className="animate-fade-in-up"
+        style={{ animationDelay: "0.12s" }}
+      >
+        <SectionHeader title={`OKRs ${year}`} icon={Target}>
           {data?.okr_summary?.overall_progress != null && (
-            <span className="rounded-lg bg-okr-light px-3 py-1.5 text-data text-[12px] font-semibold text-okr ring-1 ring-inset ring-okr/10">
-              Progres global: {formatPercent(data.okr_summary.overall_progress)}
+            <span className="rounded-lg bg-okr-light px-2.5 py-1 text-data text-[11px] font-semibold text-okr ring-1 ring-inset ring-okr/10">
+              {formatPercent(data.okr_summary.overall_progress)}
             </span>
           )}
-        </div>
+        </SectionHeader>
         {isLoading ? (
-          <div className="space-y-4">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : data?.okr_summary?.objectives &&
           data.okr_summary.objectives.length > 0 ? (
-          <div className="stagger-children space-y-5">
-            {data.okr_summary.objectives.map((obj) => (
-              <div key={obj.id} className="card p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-data text-[13px] font-semibold text-okr">
-                        {obj.code}
-                      </span>
-                      <span className="text-[13px] font-medium text-text-primary">
-                        {obj.title}
-                      </span>
+          <div className="card divide-y divide-border-subtle">
+            {data.okr_summary.objectives.map((obj) => {
+              const pct =
+                obj.progress != null
+                  ? Math.round(obj.progress * 100)
+                  : null;
+              return (
+                <div
+                  key={obj.id}
+                  className="flex items-center gap-4 px-5 py-3"
+                >
+                  <span className="text-data w-8 shrink-0 text-[12px] font-semibold text-okr">
+                    {obj.code}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
+                    {obj.title}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    <div className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-okr-light sm:block">
+                      <div
+                        className="h-full rounded-full bg-okr transition-all duration-500"
+                        style={{
+                          width: `${Math.min(pct ?? 0, 100)}%`,
+                        }}
+                      />
                     </div>
-                    {obj.owner && (
-                      <p className="mt-1 text-[11px] text-text-tertiary">
-                        {obj.owner}
-                      </p>
-                    )}
-                  </div>
-                  {obj.progress != null && (
-                    <span className="text-data shrink-0 text-sm font-semibold text-okr">
-                      {formatPercent(obj.progress)}
+                    <span className="text-data w-10 text-right text-[13px] font-semibold text-text-primary">
+                      {pct != null ? `${pct}%` : "—"}
                     </span>
-                  )}
+                  </div>
                 </div>
-                <div className="mt-4 space-y-2">
-                  {obj.key_results.map((kr) => (
-                    <KRProgressBar key={kr.id} kr={kr} />
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <EmptyState
@@ -201,40 +265,179 @@ export default function Dashboard() {
   );
 }
 
+/* ── Section header with icon ── */
 function SectionHeader({
   title,
-  noMargin,
+  icon: Icon,
+  children,
 }: {
   title: string;
-  noMargin?: boolean;
+  icon: typeof Monitor;
+  children?: React.ReactNode;
 }) {
   return (
-    <h2
-      className={cn(
-        "text-display text-[15px] font-semibold text-text-primary",
-        !noMargin && "mb-4",
-      )}
-    >
-      {title}
-    </h2>
+    <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary/8">
+          <Icon className="h-3.5 w-3.5 text-secondary" strokeWidth={1.8} />
+        </div>
+        <h2 className="text-display text-[14px] font-semibold text-text-primary">
+          {title}
+        </h2>
+      </div>
+      {children}
+    </div>
   );
 }
 
-function StatBlock({
+/* ── Compact KPI table ── */
+function KPICompactTable({ kpis }: { kpis: KPIDefinition[] }) {
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="border-b border-border bg-white/[0.03]">
+            <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+              Codi
+            </th>
+            <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+              Indicador
+            </th>
+            <th className="px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+              Valor
+            </th>
+            <th className="hidden px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-tertiary sm:table-cell">
+              Target
+            </th>
+            <th className="px-4 py-2 text-center text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+              Estat
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {kpis.map((kpi) => {
+            const status = (kpi.current_status ?? "no_data") as KPIStatus;
+            return (
+              <tr
+                key={kpi.id}
+                className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-white/[0.03]"
+              >
+                <td className="px-4 py-2">
+                  <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
+                    {kpi.code}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-text-secondary">{kpi.name}</td>
+                <td className="px-4 py-2 text-right">
+                  {kpi.current_value != null ? (
+                    <span className="text-data font-semibold text-text-primary">
+                      {formatNumber(kpi.current_value)}
+                      <span className="ml-0.5 text-[11px] font-normal text-text-tertiary">
+                        {kpi.unit}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-text-tertiary">—</span>
+                  )}
+                </td>
+                <td className="hidden px-4 py-2 text-right text-data text-text-tertiary sm:table-cell">
+                  {formatNumber(kpi.target)} {kpi.unit}
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <StatusDot status={status} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── Status dot ── */
+const statusDotColors: Record<KPIStatus, string> = {
+  ok: "bg-emerald-500",
+  warning: "bg-amber-500",
+  ko: "bg-red-500",
+  no_data: "bg-slate-600",
+};
+
+function StatusDot({ status }: { status: KPIStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-block h-2.5 w-2.5 rounded-full",
+        statusDotColors[status],
+      )}
+      role="status"
+      aria-label={status}
+    />
+  );
+}
+
+/* ── Status count mini-badge ── */
+function StatusCount({
+  status,
+  count,
+}: {
+  status: KPIStatus;
+  count: number;
+}) {
+  if (count === 0) return null;
+  return (
+    <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
+      <span
+        className={cn("h-1.5 w-1.5 rounded-full", statusDotColors[status])}
+      />
+      {count}
+    </span>
+  );
+}
+
+/* ── Stat pill for projects ── */
+function StatPill({
   label,
   value,
+  icon: Icon,
   color,
 }: {
   label: string;
-  value: number;
+  value: number | string;
+  icon?: typeof Clock;
   color: string;
 }) {
   return (
     <div className="text-center">
-      <p className={cn("text-data text-2xl font-semibold", color)}>{value}</p>
-      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+      <div className="flex items-center justify-center gap-1">
+        {Icon && (
+          <Icon className={cn("h-3 w-3", color)} strokeWidth={2} />
+        )}
+        <span className={cn("text-data text-lg font-semibold", color)}>
+          {value}
+        </span>
+      </div>
+      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
         {label}
       </p>
+    </div>
+  );
+}
+
+/* ── Mini KPI for project section ── */
+function MiniKPI({ kpi }: { kpi: KPIDefinition }) {
+  const status = (kpi.current_status ?? "no_data") as KPIStatus;
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2">
+      <StatusDot status={status} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] text-text-tertiary">{kpi.name}</p>
+      </div>
+      <span className="text-data shrink-0 text-[12px] font-semibold text-text-primary">
+        {kpi.current_value != null
+          ? `${formatNumber(kpi.current_value)}${kpi.unit}`
+          : "—"}
+      </span>
     </div>
   );
 }

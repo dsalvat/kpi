@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.schemas.kpi import KPIDefinitionRead, KPIStatusRead, KPIValueCreate, KPIValueRead
+from app.schemas.kpi import KPIDefinitionRead, KPIStatusRead, KPIValueCreate, KPIValueRead, KPIValueUpdate
 from app.services import kpi_service
 
 router = APIRouter(prefix="/api/v1/kpis", tags=["kpis"])
@@ -13,10 +13,11 @@ router = APIRouter(prefix="/api/v1/kpis", tags=["kpis"])
 @router.get("/", response_model=list[KPIDefinitionRead])
 async def list_kpis(
     category: str | None = None,
+    group: str | None = None,
     year: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    return await kpi_service.list_kpis(db, category=category, year=year)
+    return await kpi_service.list_kpis(db, category=category, group=group, year=year)
 
 
 @router.get("/{code}/values", response_model=list[KPIValueRead])
@@ -41,6 +42,30 @@ async def create_kpi_value(
     if not result:
         raise HTTPException(status_code=404, detail=f"KPI '{code}' not found")
     return result
+
+
+@router.put("/{code}/values/{value_id}", response_model=KPIValueRead)
+async def update_kpi_value(
+    code: str,
+    value_id: str,
+    data: KPIValueUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await kpi_service.update_kpi_value(db, code, value_id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="KPI or value not found")
+    return result
+
+
+@router.delete("/{code}/values/{value_id}", status_code=204)
+async def delete_kpi_value(
+    code: str,
+    value_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    deleted = await kpi_service.delete_kpi_value(db, code, value_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="KPI or value not found")
 
 
 @router.get("/{code}/status", response_model=KPIStatusRead)

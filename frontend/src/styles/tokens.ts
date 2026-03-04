@@ -23,13 +23,18 @@ export const statusColors = {
 } as const;
 
 export const chartColors = {
-  primary: "#0f1d35",
-  secondary: "#2563eb",
-  success: "#059669",
-  warning: "#d97706",
-  danger: "#dc2626",
-  okr: "#7c3aed",
-  blueMoney: "#1e40af",
-  greenMoney: "#047857",
-  accent: "#06b6d4",
+  primary: "#060b18",
+  secondary: "#3b82f6",
+  success: "#10b981",
+  warning: "#f59e0b",
+  danger: "#ef4444",
+  okr: "#a78bfa",
+  blueMoney: "#3b82f6",
+  greenMoney: "#10b981",
+  accent: "#22d3ee",
+  /* Dark theme chart helpers */
+  grid: "#1e293b",
+  axis: "#1e293b",
+  tickFill: "#64748b",
+  surface: "#0d1526",
 } as const;

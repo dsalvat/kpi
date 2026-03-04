@@ -42,6 +42,11 @@ class KPIValueCreate(BaseModel):
     notes: str | None = None
 
 
+class KPIValueUpdate(BaseModel):
+    value: Decimal
+    notes: str | None = None
+
+
 class KPIStatusRead(BaseModel):
     code: str
     name: str

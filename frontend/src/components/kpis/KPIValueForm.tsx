@@ -35,7 +35,7 @@ export function KPIValueForm({ kpi, onClose }: KPIValueFormProps) {
   ];
 
   const inputClass =
-    "mt-1.5 block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-text-primary transition-colors placeholder:text-text-tertiary hover:border-secondary/30 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20";
+    "mt-1.5 block w-full rounded-lg border border-border bg-white/[0.04] px-3 py-2 text-sm text-text-primary transition-colors placeholder:text-text-tertiary hover:border-white/10 focus:border-secondary/40 focus:outline-none focus:ring-1 focus:ring-secondary/20";
 
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
@@ -53,7 +53,7 @@ export function KPIValueForm({ kpi, onClose }: KPIValueFormProps) {
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-slate-100 hover:text-text-secondary"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
             aria-label="Tancar"
           >
             <X className="h-4 w-4" strokeWidth={2} />
@@ -126,7 +126,7 @@ export function KPIValueForm({ kpi, onClose }: KPIValueFormProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-slate-50"
+            className="rounded-lg border border-border px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
           >
             Cancel·lar
           </button>

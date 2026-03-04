@@ -6,6 +6,7 @@ import KPIsServeis from "@/pages/KPIsServeis";
 import KPIsProjectes from "@/pages/KPIsProjectes";
 import OKRs from "@/pages/OKRs";
 import ValorNegoci from "@/pages/ValorNegoci";
+import EntradaDades from "@/pages/EntradaDades";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/kpis-projectes" element={<KPIsProjectes />} />
           <Route path="/okrs" element={<OKRs />} />
           <Route path="/valor-negoci" element={<ValorNegoci />} />
+          <Route path="/entrada-dades" element={<EntradaDades />} />
         </Route>
       </Routes>
     </ErrorBoundary>

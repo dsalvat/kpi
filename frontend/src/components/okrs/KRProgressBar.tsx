@@ -16,7 +16,7 @@ export function KRProgressBar({ kr }: KRProgressBarProps) {
     kr.annual_progress != null ? Math.round(kr.annual_progress * 100) : null;
 
   return (
-    <div className="rounded-lg border border-border-subtle bg-white p-3.5 transition-colors hover:border-border">
+    <div className="rounded-lg border border-border-subtle bg-surface-elevated p-3.5 transition-colors hover:border-border">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -31,7 +31,7 @@ export function KRProgressBar({ kr }: KRProgressBarProps) {
           <span
             className={cn(
               "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
-              confidenceConfig[kr.confidence]?.className ?? "bg-slate-50 text-slate-500 ring-slate-500/10",
+              confidenceConfig[kr.confidence]?.className ?? "bg-slate-500/10 text-slate-400 ring-slate-500/20",
             )}
           >
             {kr.confidence}
