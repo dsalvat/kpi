@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { Dashboard } from "@/types/dashboard";
-import type { KPIDefinition, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
+import type { KPIDefinition, KPIDefinitionCreate, KPIDefinitionUpdate, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
 import type { Project } from "@/types/project";
 import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
@@ -46,6 +46,20 @@ export const kpiApi = {
     api.delete(`/kpis/${code}/values/${valueId}`),
   getStatus: (code: string) =>
     api.get<KPIStatusResponse>(`/kpis/${code}/status`),
+  listAll: (includeInactive?: boolean) =>
+    api.get<KPIDefinition[]>("/kpis/all", { params: { include_inactive: includeInactive } }),
+  create: (data: KPIDefinitionCreate) =>
+    api.post<KPIDefinition>("/kpis/", data),
+  update: (code: string, data: KPIDefinitionUpdate) =>
+    api.put<KPIDefinition>(`/kpis/${code}`, data),
+  deleteDefinition: (code: string) =>
+    api.delete(`/kpis/${code}`),
+  getAvailableYears: () =>
+    api.get<{ year: number; kpi_count: number }[]>("/kpis/years/available"),
+  activateYear: (year: number) =>
+    api.post<{ year: number; kpis_added: number }>(`/kpis/years/${year}/activate`),
+  deactivateYear: (year: number) =>
+    api.post<{ year: number; kpis_removed: number }>(`/kpis/years/${year}/deactivate`),
 };
 
 export const projectApi = {

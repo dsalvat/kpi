@@ -9,6 +9,7 @@ import {
   PanelLeft,
   BarChart3,
   Database,
+  Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store";
@@ -40,6 +41,7 @@ const navGroups: NavGroup[] = [
     label: "Gestio de Dades",
     items: [
       { path: "/entrada-dades", label: "Entrada de Dades", icon: Database },
+      { path: "/master-dades", label: "Master de Dades", icon: Settings2 },
     ],
   },
 ];

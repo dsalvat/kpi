@@ -9,6 +9,7 @@ from app.database import Base
 from app.models import (  # noqa: F401 - ensure all models are imported
     KPIDefinition,
     KPIValue,
+    KPIYearAssignment,
     Project,
     OKRObjective,
     OKRKeyResult,

@@ -18,7 +18,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  selectedYear: 2025,
+  selectedYear: 2026,
   setSelectedYear: (year) => set({ selectedYear: year }),
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),

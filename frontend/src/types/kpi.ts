@@ -1,9 +1,13 @@
 export type KPIStatus = "ok" | "warning" | "ko" | "no_data";
+export type KPIGroup = "serveis" | "projectes" | "valor";
 
 export interface KPIDefinition {
   id: string;
   code: string;
   name: string;
+  description: string | null;
+  calculation_method: string | null;
+  group: KPIGroup;
   category: string;
   unit: string;
   target: number;
@@ -11,9 +15,42 @@ export interface KPIDefinition {
   source: string;
   n8n_workflow_id: string | null;
   active: boolean;
+  years: number[];
   current_value: number | null;
   current_status: KPIStatus | null;
   current_month: number | null;
+}
+
+export interface KPIDefinitionCreate {
+  code: string;
+  name: string;
+  description?: string;
+  calculation_method?: string;
+  group: KPIGroup;
+  category: string;
+  unit: string;
+  target: number;
+  direction: "higher_better" | "lower_better";
+  source?: string;
+  n8n_workflow_id?: string;
+  active?: boolean;
+  years: number[];
+}
+
+export interface KPIDefinitionUpdate {
+  code?: string;
+  name?: string;
+  description?: string | null;
+  calculation_method?: string | null;
+  group?: KPIGroup;
+  category?: string;
+  unit?: string;
+  target?: number;
+  direction?: "higher_better" | "lower_better";
+  source?: string;
+  n8n_workflow_id?: string | null;
+  active?: boolean;
+  years?: number[];
 }
 
 export interface KPIValue {

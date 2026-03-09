@@ -9,6 +9,9 @@ class KPIDefinitionRead(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    description: str | None = None
+    calculation_method: str | None = None
+    group: str
     category: str
     unit: str
     target: Decimal
@@ -16,11 +19,44 @@ class KPIDefinitionRead(BaseModel):
     source: str
     n8n_workflow_id: str | None = None
     active: bool
+    years: list[int] = []
     current_value: Decimal | None = None
     current_status: str | None = None  # ok/warning/ko/no_data
     current_month: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class KPIDefinitionCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=20)
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    calculation_method: str | None = None
+    group: str = Field(pattern=r"^(serveis|projectes|valor)$")
+    category: str = Field(min_length=1, max_length=50)
+    unit: str = Field(min_length=1, max_length=20)
+    target: Decimal
+    direction: str = Field(pattern=r"^(higher_better|lower_better)$")
+    source: str = Field(default="manual", max_length=50)
+    n8n_workflow_id: str | None = None
+    active: bool = True
+    years: list[int] = []
+
+
+class KPIDefinitionUpdate(BaseModel):
+    code: str | None = None
+    name: str | None = None
+    description: str | None = None
+    calculation_method: str | None = None
+    group: str | None = None
+    category: str | None = None
+    unit: str | None = None
+    target: Decimal | None = None
+    direction: str | None = None
+    source: str | None = None
+    n8n_workflow_id: str | None = None
+    active: bool | None = None
+    years: list[int] | None = None
 
 
 class KPIValueRead(BaseModel):
