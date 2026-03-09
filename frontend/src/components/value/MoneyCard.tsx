@@ -78,7 +78,7 @@ export function MoneyCard({
         {/* Progress */}
         {progressPct != null && (
           <div className="mt-4">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-overlay-active">
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-500 ease-out",

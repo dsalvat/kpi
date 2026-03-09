@@ -201,7 +201,7 @@ export default function KPIsProjectes() {
           <div className="card overflow-hidden">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-border bg-white/[0.03]">
+                <tr className="border-b border-border bg-overlay-subtle">
                   <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
                     Projecte
                   </th>
@@ -375,8 +375,8 @@ function ProjectRow({
     <>
       <tr
         className={cn(
-          "cursor-pointer border-b border-border-subtle transition-colors hover:bg-white/[0.03]",
-          expanded && "bg-white/[0.03]",
+          "cursor-pointer border-b border-border-subtle transition-colors hover:bg-overlay-subtle",
+          expanded && "bg-overlay-subtle",
         )}
         onClick={onToggle}
       >
@@ -410,7 +410,7 @@ function ProjectRow({
         </td>
         <td className="px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-2">
-            <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.08] sm:block">
+            <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-overlay-active sm:block">
               <div
                 className={cn(
                   "h-full rounded-full",
@@ -482,7 +482,7 @@ function ProjectRow({
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={7} className="bg-white/[0.02] px-4 py-4">
+          <td colSpan={7} className="bg-overlay-subtle px-4 py-4">
             <ProjectDetail project={project} />
           </td>
         </tr>
@@ -521,7 +521,7 @@ function ProjectDetail({ project }: { project: Project }) {
             Execucio pressupostaria
           </p>
           <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-overlay-active">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",

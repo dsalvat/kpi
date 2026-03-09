@@ -75,7 +75,7 @@ export function KPICard({ kpi, onClick, active }: KPICardProps) {
               {progressPct}%
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-overlay-active">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500 ease-out",

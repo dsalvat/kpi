@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { useThemeEffect } from "@/hooks/useTheme";
 import Dashboard from "@/pages/Dashboard";
 import KPIsServeis from "@/pages/KPIsServeis";
 import KPIsProjectes from "@/pages/KPIsProjectes";
@@ -9,6 +10,8 @@ import ValorNegoci from "@/pages/ValorNegoci";
 import EntradaDades from "@/pages/EntradaDades";
 
 export default function App() {
+  useThemeEffect();
+
   return (
     <ErrorBoundary>
       <Routes>

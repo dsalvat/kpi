@@ -14,7 +14,7 @@ export function Header() {
         <input
           type="text"
           placeholder="Cercar..."
-          className="w-full rounded-lg border border-border bg-white/[0.04] py-1.5 pl-9 pr-3 text-[13px] text-text-primary placeholder:text-text-tertiary transition-colors hover:border-white/10 focus:border-secondary/40 focus:outline-none focus:ring-1 focus:ring-secondary/20"
+          className="w-full rounded-lg border border-border bg-overlay-muted py-1.5 pl-9 pr-3 text-[13px] text-text-primary placeholder:text-text-tertiary transition-colors hover:border-overlay-border-hover focus:border-secondary/40 focus:outline-none focus:ring-1 focus:ring-secondary/20"
           aria-label="Cercar"
         />
       </div>
@@ -23,7 +23,7 @@ export function Header() {
       <div className="flex items-center gap-3">
         {/* Notifications */}
         <button
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-overlay-hover hover:text-text-secondary"
           aria-label="Notificacions"
         >
           <Bell className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -37,11 +37,11 @@ export function Header() {
               id="year-select"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="appearance-none rounded-lg border border-border bg-white/[0.04] py-1.5 pl-3 pr-8 font-mono text-sm font-medium text-text-primary transition-colors hover:border-white/10 focus:border-secondary/40 focus:outline-none focus:ring-1 focus:ring-secondary/20"
+              className="appearance-none rounded-lg border border-border bg-overlay-muted py-1.5 pl-3 pr-8 font-mono text-sm font-medium text-text-primary transition-colors hover:border-overlay-border-hover focus:border-secondary/40 focus:outline-none focus:ring-1 focus:ring-secondary/20"
               aria-label="Seleccionar any"
             >
               {years.map((y) => (
-                <option key={y} value={y} className="bg-[#0d1526] text-text-primary">
+                <option key={y} value={y} className="bg-option-bg text-text-primary">
                   {y}
                 </option>
               ))}

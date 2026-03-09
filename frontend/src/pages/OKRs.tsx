@@ -10,6 +10,7 @@ import { useAppStore } from "@/store";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
+import { getChartThemeColors } from "@/styles/tokens";
 import type { OKRObjective, OKRKeyResult, OKRQuarterlyData } from "@/types/okr";
 import { ChevronDown, Pencil, Check, X } from "lucide-react";
 
@@ -27,8 +28,10 @@ function getObjColor(index: number): string {
 
 export default function OKRs() {
   const year = useAppStore((s) => s.selectedYear);
+  const resolvedTheme = useAppStore((s) => s.resolvedTheme);
   const { data: objectives, isLoading } = useOKRs();
   const [expandedObj, setExpandedObj] = useState<string | null>(null);
+  const themeColors = useMemo(() => getChartThemeColors(), [resolvedTheme]);
 
   // Overall progress
   const overallProgress = useMemo(() => {
@@ -146,7 +149,7 @@ export default function OKRs() {
                     <RadialBar
                       dataKey="value"
                       cornerRadius={4}
-                      background={{ fill: "#1e293b" }}
+                      background={{ fill: themeColors.grid }}
                     />
                   </RadialBarChart>
                 </ResponsiveContainer>
@@ -209,7 +212,7 @@ function ObjectiveCard({
       {/* Header */}
       <button
         onClick={onToggle}
-        className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]"
+        className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-overlay-subtle"
       >
         <span
           className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
@@ -231,7 +234,7 @@ function ObjectiveCard({
         <div className="flex shrink-0 items-center gap-3">
           {progressPct != null && (
             <div className="flex items-center gap-2">
-              <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.08] sm:block">
+              <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-overlay-active sm:block">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -260,7 +263,7 @@ function ObjectiveCard({
 
       {/* Expanded KRs */}
       {expanded && (
-        <div className="border-t border-border-subtle bg-white/[0.02] p-5">
+        <div className="border-t border-border-subtle bg-overlay-subtle/50 p-5">
           <div className="space-y-3">
             {objective.key_results.map((kr: OKRKeyResult) => (
               <KRDetailRow key={kr.id} kr={kr} objColor={color} />
@@ -356,7 +359,7 @@ function KRDetailRow({
 
       {/* Progress bar */}
       {progressPct != null && (
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-overlay-active">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -441,7 +444,7 @@ function QuarterCell({
           step="any"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="mt-1 w-full rounded border border-border bg-white/[0.04] px-2 py-1 text-data text-[12px] text-text-primary focus:border-okr focus:outline-none focus:ring-1 focus:ring-okr/30"
+          className="mt-1 w-full rounded border border-border bg-overlay-muted px-2 py-1 text-data text-[12px] text-text-primary focus:border-okr focus:outline-none focus:ring-1 focus:ring-okr/30"
           autoFocus
         />
         <div className="mt-1.5 flex gap-1">
@@ -454,7 +457,7 @@ function QuarterCell({
           </button>
           <button
             onClick={onDone}
-            className="flex h-5 w-5 items-center justify-center rounded bg-white/[0.08] text-text-secondary"
+            className="flex h-5 w-5 items-center justify-center rounded bg-overlay-active text-text-secondary"
           >
             <X className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -503,7 +506,7 @@ function QuarterCell({
         </p>
       </div>
       {qd.progress != null && (
-        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-overlay-active">
           <div
             className={cn(
               "h-full rounded-full",

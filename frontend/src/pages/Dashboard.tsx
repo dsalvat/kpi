@@ -296,7 +296,7 @@ function KPICompactTable({ kpis }: { kpis: KPIDefinition[] }) {
     <div className="card overflow-hidden">
       <table className="w-full text-[13px]">
         <thead>
-          <tr className="border-b border-border bg-white/[0.03]">
+          <tr className="border-b border-border bg-overlay-subtle">
             <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
               Codi
             </th>
@@ -320,7 +320,7 @@ function KPICompactTable({ kpis }: { kpis: KPIDefinition[] }) {
             return (
               <tr
                 key={kpi.id}
-                className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-white/[0.03]"
+                className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-overlay-subtle"
               >
                 <td className="px-4 py-2">
                   <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
@@ -428,7 +428,7 @@ function StatPill({
 function MiniKPI({ kpi }: { kpi: KPIDefinition }) {
   const status = (kpi.current_status ?? "no_data") as KPIStatus;
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2">
+    <div className="flex items-center gap-2 rounded-lg bg-overlay-subtle px-3 py-2">
       <StatusDot status={status} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] text-text-tertiary">{kpi.name}</p>

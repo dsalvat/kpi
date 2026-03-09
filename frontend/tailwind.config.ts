@@ -34,6 +34,16 @@ export default {
         "status-warning": "var(--status-warning)",
         "status-ko": "var(--status-ko)",
         "status-nodata": "var(--status-nodata)",
+        "option-bg": "var(--color-option-bg)",
+        backdrop: "var(--backdrop)",
+        overlay: {
+          subtle: "var(--overlay-subtle)",
+          muted: "var(--overlay-muted)",
+          hover: "var(--overlay-hover)",
+          active: "var(--overlay-active)",
+          border: "var(--overlay-border)",
+          "border-hover": "var(--overlay-border-hover)",
+        },
       },
       fontFamily: {
         sans: ['"DM Sans"', "system-ui", "sans-serif"],

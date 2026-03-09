@@ -75,7 +75,7 @@ export default function EntradaDades() {
                 "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
                 groupFilter === g
                   ? "bg-secondary text-white"
-                  : "text-text-tertiary hover:text-text-secondary hover:bg-white/[0.04]",
+                  : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-muted",
               )}
             >
               {g === "all" ? "Tots" : g === "serveis" ? "Serveis" : "Projectes"}
@@ -111,7 +111,7 @@ export default function EntradaDades() {
         >
           {/* Left: KPI selector list */}
           <div className="card overflow-hidden">
-            <div className="border-b border-border-subtle bg-white/[0.03] px-4 py-2.5">
+            <div className="border-b border-border-subtle bg-overlay-subtle px-4 py-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
                 Indicadors ({kpis.length})
               </span>
@@ -129,7 +129,7 @@ export default function EntradaDades() {
                       "flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3 text-left transition-colors",
                       isSelected
                         ? "bg-secondary/10 border-l-2 border-l-secondary"
-                        : "hover:bg-white/[0.03] border-l-2 border-l-transparent",
+                        : "hover:bg-overlay-subtle border-l-2 border-l-transparent",
                     )}
                   >
                     <StatusDot status={status} />
@@ -208,7 +208,7 @@ function KPIEditPanel({ kpi, year }: { kpi: KPIDefinition; year: number }) {
   return (
     <div className="card overflow-hidden">
       {/* Panel header */}
-      <div className="flex items-center justify-between border-b border-border-subtle bg-white/[0.03] px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border-subtle bg-overlay-subtle px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-data text-[12px] font-semibold uppercase tracking-wider text-secondary">
@@ -353,7 +353,7 @@ function MonthEditor({
   const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const inputClass =
-    "w-full rounded-lg border border-border bg-white/[0.04] px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary/40 focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-colors";
+    "w-full rounded-lg border border-border bg-overlay-muted px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary/40 focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-colors";
 
   if (editing) {
     return (
@@ -424,7 +424,7 @@ function MonthEditor({
             </button>
             <button
               onClick={cancelEdit}
-              className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-white/[0.06]"
+              className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-overlay-hover"
             >
               Cancel·lar
             </button>
@@ -459,7 +459,7 @@ function MonthEditor({
   return (
     <button
       onClick={startEdit}
-      className="flex w-full flex-col bg-surface p-4 text-left transition-colors hover:bg-white/[0.03]"
+      className="flex w-full flex-col bg-surface p-4 text-left transition-colors hover:bg-overlay-subtle"
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[12px] font-medium text-text-secondary">{monthName}</span>

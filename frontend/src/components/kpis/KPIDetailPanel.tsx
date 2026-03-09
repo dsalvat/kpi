@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   LineChart,
@@ -14,7 +14,8 @@ import { X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useKPIValues } from "@/hooks/useKPIs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn, formatNumber } from "@/lib/utils";
-import { chartColors } from "@/styles/tokens";
+import { chartColors, getChartThemeColors } from "@/styles/tokens";
+import { useAppStore } from "@/store";
 import type { KPIDefinition, KPIStatus } from "@/types/kpi";
 
 const MONTHS = [
@@ -34,6 +35,8 @@ interface KPIDetailPanelProps {
 
 export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
   const { data: values, isLoading } = useKPIValues(kpi.code);
+  const resolvedTheme = useAppStore((s) => s.resolvedTheme);
+  const themeColors = useMemo(() => getChartThemeColors(), [resolvedTheme]);
 
   // Close on Escape
   useEffect(() => {
@@ -85,7 +88,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
     <div className="fixed inset-0 z-modal flex justify-end">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 animate-fade-backdrop"
+        className="absolute inset-0 bg-backdrop animate-fade-backdrop"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -130,7 +133,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
 
           <button
             onClick={onClose}
-            className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-secondary"
+            className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-overlay-hover hover:text-text-secondary"
             aria-label="Tancar detall"
           >
             <X className="h-4 w-4" strokeWidth={2} />
@@ -173,17 +176,17 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#1e293b"
+                  stroke={themeColors.grid}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tick={{ fontSize: 11, fill: themeColors.tickFill }}
                   tickLine={false}
-                  axisLine={{ stroke: "#1e293b" }}
+                  axisLine={{ stroke: themeColors.axis }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  tick={{ fontSize: 11, fill: themeColors.tickFill }}
                   tickLine={false}
                   axisLine={false}
                   width={45}
@@ -208,14 +211,14 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
                   strokeWidth={2.5}
                   dot={{
                     r: 4,
-                    fill: "#0d1526",
+                    fill: themeColors.surface,
                     stroke: chartColors.secondary,
                     strokeWidth: 2,
                   }}
                   activeDot={{
                     r: 6,
                     fill: chartColors.secondary,
-                    stroke: "#0d1526",
+                    stroke: themeColors.surface,
                     strokeWidth: 2,
                   }}
                   connectNulls={false}
@@ -233,7 +236,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
           <div className="overflow-hidden rounded-lg border border-border-subtle">
             <table className="w-full text-[12px]">
               <thead>
-                <tr className="border-b border-border-subtle bg-white/[0.03]">
+                <tr className="border-b border-border-subtle bg-overlay-subtle">
                   <th className="px-3 py-2 text-left font-medium text-text-tertiary">
                     Mes
                   </th>
@@ -261,7 +264,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
                   return (
                     <tr
                       key={d.monthNum}
-                      className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-white/[0.03]"
+                      className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-overlay-subtle"
                     >
                       <td className="px-3 py-1.5 text-text-secondary">
                         {MONTHS_FULL[d.monthNum - 1]}
@@ -309,7 +312,7 @@ function ChartTooltip({
   const target = payload.find((p) => p.dataKey === "target")?.value;
 
   return (
-    <div className="rounded-lg border border-border bg-[#111d33] px-3 py-2 text-[12px] shadow-lg">
+    <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-[12px] shadow-lg">
       <p className="font-medium text-text-primary">{label}</p>
       {value != null && (
         <p className="text-data mt-0.5 text-secondary">

@@ -23,7 +23,6 @@ export const statusColors = {
 } as const;
 
 export const chartColors = {
-  primary: "#060b18",
   secondary: "#3b82f6",
   success: "#10b981",
   warning: "#f59e0b",
@@ -32,9 +31,16 @@ export const chartColors = {
   blueMoney: "#3b82f6",
   greenMoney: "#10b981",
   accent: "#22d3ee",
-  /* Dark theme chart helpers */
-  grid: "#1e293b",
-  axis: "#1e293b",
-  tickFill: "#64748b",
-  surface: "#0d1526",
 } as const;
+
+/** Returns theme-aware chart helper colors by reading CSS variables. */
+export function getChartThemeColors() {
+  const style = getComputedStyle(document.documentElement);
+  return {
+    grid: style.getPropertyValue("--color-border").trim() || "#1e293b",
+    axis: style.getPropertyValue("--color-border").trim() || "#1e293b",
+    tickFill: style.getPropertyValue("--color-text-tertiary").trim() || "#64748b",
+    surface: style.getPropertyValue("--color-surface").trim() || "#0d1526",
+    primary: style.getPropertyValue("--color-primary").trim() || "#060b18",
+  };
+}

@@ -16,7 +16,7 @@ import { useAppStore } from "@/store";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn, formatCurrency } from "@/lib/utils";
-import { chartColors } from "@/styles/tokens";
+import { chartColors, getChartThemeColors } from "@/styles/tokens";
 import type { ValueItem } from "@/types/value";
 import {
   Wallet,
@@ -29,8 +29,10 @@ import {
 
 export default function ValorNegoci() {
   const year = useAppStore((s) => s.selectedYear);
+  const resolvedTheme = useAppStore((s) => s.resolvedTheme);
   const { data: summary, isLoading: loadingSummary } = useValueSummary();
   const { data: roi, isLoading: loadingROI } = useROI();
+  const themeColors = useMemo(() => getChartThemeColors(), [resolvedTheme]);
 
   const isLoading = loadingSummary || loadingROI;
 
@@ -200,21 +202,21 @@ export default function ValorNegoci() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#1e293b"
+                    stroke={themeColors.grid}
                     horizontal={false}
                   />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: themeColors.tickFill }}
                     tickLine={false}
-                    axisLine={{ stroke: "#1e293b" }}
+                    axisLine={{ stroke: themeColors.axis }}
                     tickFormatter={(v) => formatCompact(v)}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
                     width={55}
-                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: themeColors.tickFill }}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -423,7 +425,7 @@ function InitiativeTable({
     <div className="card overflow-hidden">
       <table className="w-full text-[13px]">
         <thead>
-          <tr className="border-b border-border bg-white/[0.03]">
+          <tr className="border-b border-border bg-overlay-subtle">
             <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
               Codi
             </th>
@@ -465,7 +467,7 @@ function InitiativeTable({
             return (
               <tr
                 key={item.id}
-                className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-white/[0.03]"
+                className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-overlay-subtle"
               >
                 <td className="px-4 py-3">
                   <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
@@ -517,7 +519,7 @@ function InitiativeTable({
                 )}
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <div className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-white/[0.08] sm:block">
+                    <div className="hidden h-1.5 w-20 overflow-hidden rounded-full bg-overlay-active sm:block">
                       <div
                         className={cn("h-full rounded-full", accentColor)}
                         style={{ width: `${pct}%` }}
@@ -533,7 +535,7 @@ function InitiativeTable({
           })}
         </tbody>
         <tfoot>
-          <tr className="border-t border-border bg-white/[0.03]">
+          <tr className="border-t border-border bg-overlay-subtle">
             <td
               colSpan={type === "blue" ? 5 : 4}
               className="px-4 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-text-tertiary"
@@ -573,7 +575,7 @@ function BarTooltip({
   const d = payload[0].payload;
 
   return (
-    <div className="rounded-lg border border-border bg-[#111d33] px-3 py-2 text-[12px] shadow-lg">
+    <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-[12px] shadow-lg">
       <p className="font-medium text-text-primary">
         {d.name} — {d.initiative}
       </p>
