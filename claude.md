@@ -459,12 +459,14 @@ kpi/
 │   │   ├── config.py               ← Pydantic Settings
 │   │   ├── database.py             ← SQLAlchemy async engine + get_db
 │   │   ├── models/
-│   │   │   ├── kpi.py              ← KPIDefinition, KPIValue
+│   │   │   ├── connector.py        ← Credential, Connector (fonts de dades)
+│   │   │   ├── kpi.py              ← KPIDefinition, KPIValue, KPIYearAssignment
 │   │   │   ├── project.py          ← Project
 │   │   │   ├── okr.py              ← OKRObjective, OKRKeyResult, OKRQuarterlyData
 │   │   │   ├── value.py            ← ValueItem
 │   │   │   └── sync_log.py         ← N8nSyncLog
 │   │   ├── schemas/
+│   │   │   ├── connector.py        ← Credential/Connector CRUD schemas
 │   │   │   ├── kpi.py              ← KPIDefinitionRead, KPIValueRead, KPIValueCreate
 │   │   │   ├── project.py          ← ProjectRead, ProjectsSummary
 │   │   │   ├── okr.py              ← OKRObjectiveRead, OKRSummaryRead
@@ -474,6 +476,7 @@ kpi/
 │   │   │   └── auth.py             ← LoginRequest, TokenResponse
 │   │   ├── routers/
 │   │   │   ├── auth.py             ← POST /auth/login, GET /auth/me
+│   │   │   ├── connectors.py       ← CRUD /settings/credentials/ i /settings/connectors/
 │   │   │   ├── dashboard.py        ← GET /dashboard/, GET /dashboard/year/{year}
 │   │   │   ├── kpis.py             ← GET/POST /kpis/, /kpis/{code}/values/, /status/
 │   │   │   ├── projects.py         ← GET /projects/, PUT /projects/{code}
@@ -482,6 +485,7 @@ kpi/
 │   │   │   └── ingest.py           ← POST /ingest/kpi-value, /batch, GET /logs
 │   │   └── services/
 │   │       ├── calculations.py     ← Tota la logica de calcul (DRY, 40 tests)
+│   │       ├── connector_service.py ← CRUD credencials i connectors
 │   │       ├── kpi_service.py
 │   │       ├── project_service.py
 │   │       ├── okr_service.py
@@ -509,22 +513,27 @@ kpi/
 │   │   │   ├── globals.css         ← CSS custom properties (design system)
 │   │   │   └── tokens.ts           ← Design tokens per Recharts
 │   │   ├── api/client.ts           ← Axios + JWT interceptor
-│   │   ├── store/index.ts          ← Zustand (selectedYear=2025, sidebar)
+│   │   ├── store/index.ts          ← Zustand (selectedYear=2026, sidebar)
 │   │   ├── types/
+│   │   │   ├── connector.ts        ← Credential, Connector, SourceType
 │   │   │   ├── kpi.ts
 │   │   │   ├── project.ts
 │   │   │   ├── okr.ts
 │   │   │   ├── value.ts
 │   │   │   └── dashboard.ts
 │   │   ├── hooks/
+│   │   │   ├── useConnectors.ts    ← React Query hooks credencials i connectors
 │   │   │   ├── useDashboard.ts     ← React Query hook dashboard
-│   │   │   └── useKPIs.ts          ← React Query hook KPIs
+│   │   │   └── useKPIs.ts          ← React Query hook KPIs + definition CRUD + years
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx       ← Vista principal
 │   │   │   ├── KPIsServeis.tsx     ← KPIs amb entrada manual
 │   │   │   ├── KPIsProjectes.tsx   ← Placeholder
 │   │   │   ├── OKRs.tsx            ← Placeholder
-│   │   │   └── ValorNegoci.tsx     ← Placeholder
+│   │   │   ├── ValorNegoci.tsx     ← Placeholder
+│   │   │   ├── EntradaDades.tsx    ← Entrada manual de valors KPI
+│   │   │   ├── MasterDades.tsx     ← CRUD definicions KPI, grups, anys
+│   │   │   └── Settings.tsx        ← Gestio connectors i credencials
 │   │   └── components/
 │   │       ├── layout/
 │   │       │   ├── AppLayout.tsx   ← Wrapper amb Sidebar + Header
@@ -553,18 +562,50 @@ kpi/
 ## 6. Model de Dades
 
 ```sql
+-- Credentials: credencials reutilitzables per a APIs externes
+credentials (
+  id UUID PK,
+  name VARCHAR(100) UNIQUE,
+  auth_type VARCHAR(20),           -- 'basic' | 'bearer' | 'api_key'
+  username VARCHAR(200) NULLABLE,
+  token TEXT,                      -- emmagatzemat, emmascarat a l'API (****xxxx)
+  base_url VARCHAR(500) NULLABLE,
+  active BOOLEAN DEFAULT TRUE
+)
+
+-- Connectors: fonts de dades configurades
+connectors (
+  id UUID PK,
+  name VARCHAR(200) UNIQUE,
+  type VARCHAR(20),                -- 'api_rest' | 'ai_agent'
+  credential_id UUID FK → credentials NULLABLE,
+  config JSONB NULLABLE,           -- {endpoint, method, headers} o {system_prompt, provider}
+  active BOOLEAN DEFAULT TRUE
+)
+
 -- KPI Definition: catàleg de KPIs
 kpi_definitions (
   id UUID PK,
-  code VARCHAR(20) UNIQUE,         -- 'SRV-01', 'PRJ-M01'
+  code VARCHAR(20) UNIQUE,         -- 'SRV-01', 'PRJ-01', 'VAL-01'
   name VARCHAR(200),
-  category VARCHAR(50),
+  description TEXT NULLABLE,
+  calculation_method TEXT NULLABLE,
+  "group" VARCHAR(20),             -- 'serveis' | 'projectes' | 'valor'
+  category VARCHAR(50),            -- subcategoria: disponibilitat, incidents, etc.
   unit VARCHAR(20),                -- '%', 'h', '€', '/10', 'Nº'
   target DECIMAL,
   direction VARCHAR(15),           -- 'higher_better' | 'lower_better'
-  source VARCHAR(50),              -- 'meraki' | 'aruba' | 'sap' | 'itsm' | 'manual'
+  source VARCHAR(50),              -- descriptiu: 'meraki' | 'aruba' | 'sap' | 'itsm' | 'manual'
+  source_type VARCHAR(20),         -- 'manual' | 'api_rest' | 'ai_agent'
+  connector_id UUID FK → connectors NULLABLE (ON DELETE SET NULL),
   n8n_workflow_id VARCHAR(100),    -- ID del workflow n8n que col·lecta aquest KPI
   active BOOLEAN DEFAULT TRUE
+)
+
+-- KPI Year Assignments: relació M:N entre KPIs i anys
+kpi_year_assignments (
+  kpi_id UUID FK → kpi_definitions PK,
+  year INT PK
 )
 
 -- KPI Values: lectures mensuals
@@ -720,10 +761,30 @@ GET   /api/v1/auth/me
 GET   /api/v1/dashboard                → resum executiu complet
 GET   /api/v1/dashboard/year/{year}
 
-GET   /api/v1/kpis                     → llista amb definicions i estat actual
+GET   /api/v1/kpis                     → llista amb definicions i estat actual (query: group, category, year)
+GET   /api/v1/kpis/all                 → totes les definicions (master data, query: include_inactive)
+POST  /api/v1/kpis                     → crear definició KPI
+PUT   /api/v1/kpis/{code}              → actualitzar definició (incl. rename code)
+DELETE /api/v1/kpis/{code}             → eliminar definició
 GET   /api/v1/kpis/{code}/values       → valors mensuals (query: year)
 POST  /api/v1/kpis/{code}/values       → entrada manual
+PUT   /api/v1/kpis/{code}/values/{id}  → actualitzar valor
+DELETE /api/v1/kpis/{code}/values/{id} → eliminar valor
 GET   /api/v1/kpis/{code}/status       → semàfor actual
+GET   /api/v1/kpis/years/available     → anys amb recompte KPIs
+POST  /api/v1/kpis/years/{year}/activate   → assignar any a tots els KPIs actius
+POST  /api/v1/kpis/years/{year}/deactivate → treure any de tots els KPIs
+
+GET   /api/v1/settings/credentials/         → llista credencials (token emmascarat)
+GET   /api/v1/settings/credentials/summary  → llista mínima per dropdowns
+POST  /api/v1/settings/credentials/         → crear credencial
+PUT   /api/v1/settings/credentials/{id}     → actualitzar credencial
+DELETE /api/v1/settings/credentials/{id}    → eliminar credencial
+GET   /api/v1/settings/connectors/          → llista connectors
+GET   /api/v1/settings/connectors/summary   → llista mínima per dropdowns
+POST  /api/v1/settings/connectors/          → crear connector
+PUT   /api/v1/settings/connectors/{id}      → actualitzar connector
+DELETE /api/v1/settings/connectors/{id}     → eliminar connector
 
 POST  /api/v1/ingest/kpi-value         ← cridat per n8n (auth: webhook token)
 POST  /api/v1/ingest/batch             ← múltiples valors
@@ -818,12 +879,26 @@ docker compose exec backend python -m scripts.seed_from_excel
 - [x] 41 tests backend passant (40 calculations + 1 health)
 - [x] Auth JWT amb usuaris hardcoded (admin/viewer)
 
+### Fase 1.5 — Master de Dades i Connectors ✅ COMPLETADA
+- [x] **Master de Dades** — pagina CRUD definicions KPI (grup/subcategoria/descripció/càlcul)
+- [x] Model grup/subcategoria: serveis (SRV-), projectes (PRJ-), valor (VAL-)
+- [x] Gestió d'anys (activar/desactivar any per tots els KPIs)
+- [x] Taula kpi_year_assignments (M:N KPI↔any)
+- [x] **Sistema de connectors**: Credential + Connector models amb Alembic
+- [x] Tres tipus de font per KPI: manual, API REST (amb credencial), Agent IA (amb system prompt)
+- [x] CRUD credencials amb tokens emmascarats (****xxxx)
+- [x] CRUD connectors (api_rest amb credential+endpoint, ai_agent amb system_prompt)
+- [x] **Pàgina Configuració** (`/configuracio`) — gestió connectors i credencials
+- [x] Selector font de dades al formulari MasterDades (Manual/API REST/Agent IA + connector)
+- [x] 10 endpoints nous sota /api/v1/settings/
+- [x] Zustand default year canviat a 2026
+
 ### Fase 2 — Connectors n8n
 7. Workflow ITSM (maxim impacte: SRV-03..08, SRV-11, SRV-12)
 8. Workflow Meraki (SRV-01, SRV-02 oficines)
 9. Workflow Aruba (SRV-02 factories/magatzems)
 10. Workflow SAP (costos, desviacio pressupost)
-11. Pagina Settings: configuracio i test de workflows n8n
+11. Integració connectors configurats amb execucio real (API REST fetch, Rovo agent)
 
 ### Fase 3 — OKRs i Valor Negoci
 12. Pagina OKRs completa amb progres automatic vinculat a KPIs
@@ -849,7 +924,9 @@ docker compose exec backend python -m scripts.seed_from_excel
 | **TDD estricte** | Tests escrits ABANS del codi de produccio. Superpowers ho imposa. |
 | **YAGNI** | No implementis multi-rol, i18n, ni exports avancats fins a la fase corresponent. |
 | **SHA-256 en lloc de bcrypt** | passlib/bcrypt incompatible amb Python 3.13. SHA-256 suficient per MVP amb usuaris hardcoded. |
-| **Dades any 2025** | Totes les dades seed son de l'any 2025. El store Zustand default es `selectedYear: 2025`. |
+| **Dades any 2025, default 2026** | Dades seed son de l'any 2025. El store Zustand default es `selectedYear: 2026`. |
+| **Grup + Subcategoria** | `group` (serveis/projectes/valor) es la classificacio principal. `category` es la subcategoria (disponibilitat, incidents...). El prefix del codi (SRV-/PRJ-/VAL-) ha de coincidir amb el grup. |
+| **Connectors configurables** | Tres tipus de font per KPI: manual, api_rest (amb credencial i URL), ai_agent (amb system prompt). Credencials reutilitzables entre connectors. Tokens emmascarats a l'API. |
 | **Trailing slashes a l'API** | FastAPI retorna 307 redirect sense trailing slash. Tots els endpoints del client usen `/`. |
 | **Redis graceful degradation** | `cache.py` retorna `None` si `REDIS_URL` es buit. El dashboard funciona sense Redis. |
 | **Seed sync (psycopg2)** | El seed script usa SQLAlchemy sync, no async. S'executa una sola vegada via Docker exec. |

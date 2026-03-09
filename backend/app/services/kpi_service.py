@@ -5,6 +5,7 @@ from sqlalchemy import delete, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.connector import Connector
 from app.models.kpi import KPIDefinition, KPIValue, KPIYearAssignment
 from app.schemas.kpi import KPIDefinitionCreate, KPIDefinitionUpdate, KPIValueCreate, KPIValueUpdate
 from app.services.calculations import kpi_status, kr_progress
@@ -24,6 +25,13 @@ async def _enrich_kpi(db: AsyncSession, kpi: KPIDefinition, year: int | None = N
     result = await db.execute(stmt)
     years = [r[0] for r in result.all()]
 
+    # Get connector name if linked
+    connector_name = None
+    if kpi.connector_id:
+        conn_stmt = select(Connector.name).where(Connector.id == kpi.connector_id)
+        conn_result = await db.execute(conn_stmt)
+        connector_name = conn_result.scalar_one_or_none()
+
     data = {
         "id": kpi.id,
         "code": kpi.code,
@@ -36,6 +44,9 @@ async def _enrich_kpi(db: AsyncSession, kpi: KPIDefinition, year: int | None = N
         "target": kpi.target,
         "direction": kpi.direction,
         "source": kpi.source,
+        "source_type": kpi.source_type,
+        "connector_id": kpi.connector_id,
+        "connector_name": connector_name,
         "n8n_workflow_id": kpi.n8n_workflow_id,
         "active": kpi.active,
         "years": years,
@@ -94,6 +105,8 @@ async def create_kpi_definition(db: AsyncSession, data: KPIDefinitionCreate) -> 
         target=data.target,
         direction=data.direction,
         source=data.source,
+        source_type=data.source_type,
+        connector_id=data.connector_id,
         n8n_workflow_id=data.n8n_workflow_id,
         active=data.active,
     )

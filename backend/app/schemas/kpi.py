@@ -17,6 +17,9 @@ class KPIDefinitionRead(BaseModel):
     target: Decimal
     direction: str
     source: str
+    source_type: str  # manual | api_rest | ai_agent
+    connector_id: uuid.UUID | None = None
+    connector_name: str | None = None
     n8n_workflow_id: str | None = None
     active: bool
     years: list[int] = []
@@ -38,6 +41,8 @@ class KPIDefinitionCreate(BaseModel):
     target: Decimal
     direction: str = Field(pattern=r"^(higher_better|lower_better)$")
     source: str = Field(default="manual", max_length=50)
+    source_type: str = Field(default="manual", pattern=r"^(manual|api_rest|ai_agent)$")
+    connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
     active: bool = True
     years: list[int] = []
@@ -54,6 +59,8 @@ class KPIDefinitionUpdate(BaseModel):
     target: Decimal | None = None
     direction: str | None = None
     source: str | None = None
+    source_type: str | None = None
+    connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
     active: bool | None = None
     years: list[int] | None = None

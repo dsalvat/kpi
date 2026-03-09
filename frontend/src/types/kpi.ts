@@ -1,3 +1,5 @@
+import type { SourceType } from "./connector";
+
 export type KPIStatus = "ok" | "warning" | "ko" | "no_data";
 export type KPIGroup = "serveis" | "projectes" | "valor";
 
@@ -13,6 +15,9 @@ export interface KPIDefinition {
   target: number;
   direction: "higher_better" | "lower_better";
   source: string;
+  source_type: SourceType;
+  connector_id: string | null;
+  connector_name: string | null;
   n8n_workflow_id: string | null;
   active: boolean;
   years: number[];
@@ -32,6 +37,8 @@ export interface KPIDefinitionCreate {
   target: number;
   direction: "higher_better" | "lower_better";
   source?: string;
+  source_type?: SourceType;
+  connector_id?: string | null;
   n8n_workflow_id?: string;
   active?: boolean;
   years: number[];
@@ -48,6 +55,8 @@ export interface KPIDefinitionUpdate {
   target?: number;
   direction?: "higher_better" | "lower_better";
   source?: string;
+  source_type?: SourceType;
+  connector_id?: string | null;
   n8n_workflow_id?: string | null;
   active?: boolean;
   years?: number[];

@@ -8,6 +8,7 @@ import {
   useUpdateKPIDefinition,
   useDeleteKPIDefinition,
 } from "@/hooks/useKPIs";
+import { useConnectorsSummary } from "@/hooks/useConnectors";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { cn } from "@/lib/utils";
 import type {
@@ -16,6 +17,7 @@ import type {
   KPIDefinitionUpdate,
   KPIGroup,
 } from "@/types/kpi";
+import type { SourceType } from "@/types/connector";
 import {
   Settings2,
   Plus,
@@ -58,6 +60,12 @@ const SUBCATEGORIES: Record<KPIGroup, string[]> = {
 const CURRENT_YEAR = new Date().getFullYear();
 const AVAILABLE_YEARS = Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 2 + i);
 
+const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
+  manual: "Manual",
+  api_rest: "API REST",
+  ai_agent: "Agent IA (Rovo)",
+};
+
 function buildEmptyForm(group: KPIGroup = "serveis"): KPIDefinitionCreate {
   return {
     code: GROUP_PREFIX[group],
@@ -70,6 +78,8 @@ function buildEmptyForm(group: KPIGroup = "serveis"): KPIDefinitionCreate {
     target: 0,
     direction: "higher_better",
     source: "manual",
+    source_type: "manual",
+    connector_id: null,
     active: true,
     years: [CURRENT_YEAR],
   };
@@ -423,9 +433,16 @@ function KPIRow({
               </div>
               <div>
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                  Font
+                  Font de dades
                 </p>
-                <p className="text-[12px] text-text-secondary">{kpi.source}</p>
+                <p className="text-[12px] text-text-secondary">
+                  {kpi.source_type === "manual" ? "Manual" : kpi.source_type === "api_rest" ? "API REST" : "Agent IA"}
+                  {kpi.connector_name && (
+                    <span className="ml-1.5 rounded bg-secondary/10 px-1.5 py-0.5 text-[10px] font-semibold text-secondary">
+                      {kpi.connector_name}
+                    </span>
+                  )}
+                </p>
               </div>
               <div>
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
@@ -453,6 +470,8 @@ function KPIForm({
 }) {
   const isNew = kpi === null;
 
+  const { data: connectorsSummary } = useConnectorsSummary();
+
   const [form, setForm] = useState<KPIDefinitionCreate>(() => {
     if (kpi) {
       return {
@@ -466,6 +485,8 @@ function KPIForm({
         target: Number(kpi.target),
         direction: kpi.direction as "higher_better" | "lower_better",
         source: kpi.source,
+        source_type: kpi.source_type ?? "manual",
+        connector_id: kpi.connector_id ?? null,
         n8n_workflow_id: kpi.n8n_workflow_id ?? undefined,
         active: kpi.active,
         years: [...kpi.years],
@@ -532,6 +553,8 @@ function KPIForm({
           target: form.target,
           direction: form.direction,
           source: form.source,
+          source_type: form.source_type,
+          connector_id: form.source_type === "manual" ? null : form.connector_id,
           active: form.active,
           years: form.years,
         };
@@ -705,20 +728,69 @@ function KPIForm({
           </div>
         </div>
 
-        {/* Source */}
+        {/* Source type */}
         <div>
-          <label className={labelClass}>Font</label>
-          <select
+          <label className={labelClass}>Tipus de Font</label>
+          <div className="flex gap-2">
+            {(["manual", "api_rest", "ai_agent"] as const).map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => {
+                  setField("source_type", st);
+                  if (st === "manual") setField("connector_id", null);
+                }}
+                className={cn(
+                  "flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors",
+                  form.source_type === st
+                    ? "bg-secondary/15 text-secondary ring-1 ring-secondary/30"
+                    : "border border-border bg-overlay-muted text-text-tertiary hover:bg-overlay-hover",
+                )}
+              >
+                {SOURCE_TYPE_LABELS[st]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Connector selector (for api_rest and ai_agent) */}
+        {form.source_type !== "manual" && (
+          <div>
+            <label className={labelClass}>
+              Connector {form.source_type === "api_rest" ? "API" : "Agent IA"}
+            </label>
+            <select
+              value={form.connector_id ?? ""}
+              onChange={(e) => setField("connector_id", e.target.value || null)}
+              className={inputClass}
+            >
+              <option value="">— Selecciona un connector —</option>
+              {(connectorsSummary ?? [])
+                .filter((c) => c.type === form.source_type)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+            </select>
+            {(connectorsSummary ?? []).filter((c) => c.type === form.source_type).length === 0 && (
+              <p className="mt-1 text-[11px] text-amber-400">
+                No hi ha connectors d'aquest tipus. Crea'n un a Configuració.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Source (legacy descriptive field) */}
+        <div>
+          <label className={labelClass}>Font descriptiva</label>
+          <input
+            type="text"
             value={form.source ?? "manual"}
             onChange={(e) => setField("source", e.target.value)}
+            placeholder="manual, meraki, sap..."
             className={inputClass}
-          >
-            <option value="manual">Manual</option>
-            <option value="meraki">Meraki</option>
-            <option value="aruba">Aruba</option>
-            <option value="sap">SAP</option>
-            <option value="itsm">ITSM</option>
-          </select>
+          />
         </div>
 
         {/* Years */}

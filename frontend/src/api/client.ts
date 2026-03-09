@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { Credential, CredentialCreate, CredentialUpdate, CredentialSummary, Connector, ConnectorCreate, ConnectorUpdate, ConnectorSummary } from "@/types/connector";
 import type { Dashboard } from "@/types/dashboard";
 import type { KPIDefinition, KPIDefinitionCreate, KPIDefinitionUpdate, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
 import type { Project } from "@/types/project";
@@ -60,6 +61,32 @@ export const kpiApi = {
     api.post<{ year: number; kpis_added: number }>(`/kpis/years/${year}/activate`),
   deactivateYear: (year: number) =>
     api.post<{ year: number; kpis_removed: number }>(`/kpis/years/${year}/deactivate`),
+};
+
+export const credentialApi = {
+  list: (activeOnly = false) =>
+    api.get<Credential[]>("/settings/credentials/", { params: { active_only: activeOnly } }),
+  summary: () =>
+    api.get<CredentialSummary[]>("/settings/credentials/summary"),
+  create: (data: CredentialCreate) =>
+    api.post<Credential>("/settings/credentials/", data),
+  update: (id: string, data: CredentialUpdate) =>
+    api.put<Credential>(`/settings/credentials/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/settings/credentials/${id}`),
+};
+
+export const connectorApi = {
+  list: (activeOnly = false) =>
+    api.get<Connector[]>("/settings/connectors/", { params: { active_only: activeOnly } }),
+  summary: () =>
+    api.get<ConnectorSummary[]>("/settings/connectors/summary"),
+  create: (data: ConnectorCreate) =>
+    api.post<Connector>("/settings/connectors/", data),
+  update: (id: string, data: ConnectorUpdate) =>
+    api.put<Connector>(`/settings/connectors/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/settings/connectors/${id}`),
 };
 
 export const projectApi = {

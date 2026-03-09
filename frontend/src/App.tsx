@@ -9,6 +9,7 @@ import OKRs from "@/pages/OKRs";
 import ValorNegoci from "@/pages/ValorNegoci";
 import EntradaDades from "@/pages/EntradaDades";
 import MasterDades from "@/pages/MasterDades";
+import Settings from "@/pages/Settings";
 
 export default function App() {
   useThemeEffect();
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/valor-negoci" element={<ValorNegoci />} />
           <Route path="/entrada-dades" element={<EntradaDades />} />
           <Route path="/master-dades" element={<MasterDades />} />
+          <Route path="/configuracio" element={<Settings />} />
         </Route>
       </Routes>
     </ErrorBoundary>
