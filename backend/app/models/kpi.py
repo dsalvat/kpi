@@ -27,7 +27,7 @@ class KPIDefinition(Base):
     target: Mapped[Decimal] = mapped_column(Numeric)
     direction: Mapped[str] = mapped_column(String(15))  # higher_better | lower_better
     source: Mapped[str] = mapped_column(String(50))  # legacy descriptive field
-    source_type: Mapped[str] = mapped_column(String(20), default="manual")  # manual | api_rest | ai_agent
+    source_type: Mapped[str] = mapped_column(String(20), default="manual")  # manual | api_rest | ai_agent | mcp
     connector_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("connectors.id", ondelete="SET NULL"), nullable=True
     )

@@ -1,6 +1,6 @@
 export type AuthType = "basic" | "bearer" | "api_key";
-export type ConnectorType = "api_rest" | "ai_agent";
-export type SourceType = "manual" | "api_rest" | "ai_agent";
+export type ConnectorType = "api_rest" | "ai_agent" | "mcp";
+export type SourceType = "manual" | "api_rest" | "ai_agent" | "mcp";
 
 export interface Credential {
   id: string;

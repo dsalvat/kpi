@@ -51,7 +51,7 @@ class CredentialSummary(BaseModel):
 
 class ConnectorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    type: str = Field(pattern=r"^(api_rest|ai_agent)$")
+    type: str = Field(pattern=r"^(api_rest|ai_agent|mcp)$")
     credential_id: uuid.UUID | None = None
     config: dict | None = None
     active: bool = True

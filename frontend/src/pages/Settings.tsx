@@ -34,6 +34,7 @@ import {
   EyeOff,
   Globe,
   Bot,
+  Cable,
 } from "lucide-react";
 
 type Tab = "connectors" | "credentials";
@@ -47,6 +48,7 @@ const AUTH_TYPE_LABELS: Record<AuthType, string> = {
 const CONNECTOR_TYPE_LABELS: Record<ConnectorType, string> = {
   api_rest: "API REST",
   ai_agent: "Agent IA",
+  mcp: "MCP",
 };
 
 export default function Settings() {
@@ -152,10 +154,12 @@ function ConnectorsPanel() {
               >
                 <div className={cn(
                   "flex h-9 w-9 items-center justify-center rounded-lg",
-                  conn.type === "api_rest" ? "bg-blue-500/10" : "bg-purple-500/10",
+                  conn.type === "api_rest" ? "bg-blue-500/10" : conn.type === "mcp" ? "bg-teal-500/10" : "bg-purple-500/10",
                 )}>
                   {conn.type === "api_rest" ? (
                     <Globe className="h-4 w-4 text-blue-400" strokeWidth={2} />
+                  ) : conn.type === "mcp" ? (
+                    <Cable className="h-4 w-4 text-teal-400" strokeWidth={2} />
                   ) : (
                     <Bot className="h-4 w-4 text-purple-400" strokeWidth={2} />
                   )}
@@ -273,24 +277,30 @@ function ConnectorForm({ connector, onClose }: { connector: Connector | null; on
         <div>
           <label className={labelClass}>Tipus</label>
           <div className="flex gap-2">
-            {(["api_rest", "ai_agent"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setForm((prev) => ({ ...prev, type: t }))}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[12px] font-semibold transition-colors",
-                  form.type === t
-                    ? t === "api_rest"
-                      ? "bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/30"
-                      : "bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/30"
-                    : "border border-border bg-overlay-muted text-text-tertiary hover:bg-overlay-hover",
-                )}
-              >
-                {t === "api_rest" ? <Globe className="h-3.5 w-3.5" strokeWidth={2} /> : <Bot className="h-3.5 w-3.5" strokeWidth={2} />}
-                {CONNECTOR_TYPE_LABELS[t]}
-              </button>
-            ))}
+            {(["api_rest", "ai_agent", "mcp"] as const).map((t) => {
+              const activeStyles = t === "api_rest"
+                ? "bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/30"
+                : t === "mcp"
+                  ? "bg-teal-500/10 text-teal-400 ring-1 ring-teal-500/30"
+                  : "bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/30";
+              const Icon = t === "api_rest" ? Globe : t === "mcp" ? Cable : Bot;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, type: t }))}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[12px] font-semibold transition-colors",
+                    form.type === t
+                      ? activeStyles
+                      : "border border-border bg-overlay-muted text-text-tertiary hover:bg-overlay-hover",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+                  {CONNECTOR_TYPE_LABELS[t]}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -301,7 +311,7 @@ function ConnectorForm({ connector, onClose }: { connector: Connector | null; on
             type="text"
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-            placeholder={form.type === "api_rest" ? "Meraki API" : "Rovo - Jira Agent"}
+            placeholder={form.type === "api_rest" ? "Meraki API" : form.type === "mcp" ? "Atlassian MCP" : "Rovo - Jira Agent"}
             className={inputClass}
           />
         </div>
@@ -397,6 +407,57 @@ function ConnectorForm({ connector, onClose }: { connector: Connector | null; on
             {/* Credential (optional for AI too) */}
             <div>
               <label className={labelClass}>Credencial (API Key del proveïdor)</label>
+              <select
+                value={form.credential_id ?? ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, credential_id: e.target.value || undefined }))}
+                className={inputClass}
+              >
+                <option value="">— Sense credencial —</option>
+                {(credentialsSummary ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({AUTH_TYPE_LABELS[c.auth_type]})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {/* MCP specific fields */}
+        {form.type === "mcp" && (
+          <>
+            {/* Server URL */}
+            <div>
+              <label className={labelClass}>URL del servidor MCP</label>
+              <input
+                type="text"
+                value={config.server_url ?? ""}
+                onChange={(e) => setConfig("server_url", e.target.value)}
+                placeholder="https://mcp.atlassian.com/v1/mcp"
+                className={inputClass}
+              />
+              <p className="mt-1 text-[11px] text-text-tertiary">
+                URL completa del servidor MCP (SSE o Streamable HTTP).
+              </p>
+            </div>
+
+            {/* Transport */}
+            <div>
+              <label className={labelClass}>Transport</label>
+              <select
+                value={config.transport ?? "sse"}
+                onChange={(e) => setConfig("transport", e.target.value)}
+                className={inputClass}
+              >
+                <option value="sse">SSE (Server-Sent Events)</option>
+                <option value="streamable_http">Streamable HTTP</option>
+                <option value="stdio">Stdio (local)</option>
+              </select>
+            </div>
+
+            {/* Credential (optional for MCP) */}
+            <div>
+              <label className={labelClass}>Credencial (autenticació al servidor)</label>
               <select
                 value={form.credential_id ?? ""}
                 onChange={(e) => setForm((prev) => ({ ...prev, credential_id: e.target.value || undefined }))}

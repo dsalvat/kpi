@@ -64,6 +64,7 @@ const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   manual: "Manual",
   api_rest: "API REST",
   ai_agent: "Agent IA (Rovo)",
+  mcp: "MCP",
 };
 
 function buildEmptyForm(group: KPIGroup = "serveis"): KPIDefinitionCreate {
@@ -436,7 +437,7 @@ function KPIRow({
                   Font de dades
                 </p>
                 <p className="text-[12px] text-text-secondary">
-                  {kpi.source_type === "manual" ? "Manual" : kpi.source_type === "api_rest" ? "API REST" : "Agent IA"}
+                  {SOURCE_TYPE_LABELS[kpi.source_type as SourceType] ?? kpi.source_type}
                   {kpi.connector_name && (
                     <span className="ml-1.5 rounded bg-secondary/10 px-1.5 py-0.5 text-[10px] font-semibold text-secondary">
                       {kpi.connector_name}
@@ -732,7 +733,7 @@ function KPIForm({
         <div>
           <label className={labelClass}>Tipus de Font</label>
           <div className="flex gap-2">
-            {(["manual", "api_rest", "ai_agent"] as const).map((st) => (
+            {(["manual", "api_rest", "ai_agent", "mcp"] as const).map((st) => (
               <button
                 key={st}
                 type="button"
@@ -757,7 +758,7 @@ function KPIForm({
         {form.source_type !== "manual" && (
           <div>
             <label className={labelClass}>
-              Connector {form.source_type === "api_rest" ? "API" : "Agent IA"}
+              Connector {form.source_type === "api_rest" ? "API" : form.source_type === "mcp" ? "MCP" : "Agent IA"}
             </label>
             <select
               value={form.connector_id ?? ""}

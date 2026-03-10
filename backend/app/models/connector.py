@@ -28,7 +28,7 @@ class Connector(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), unique=True)
-    type: Mapped[str] = mapped_column(String(20))  # api_rest | ai_agent
+    type: Mapped[str] = mapped_column(String(20))  # api_rest | ai_agent | mcp
     credential_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("credentials.id"), nullable=True
     )

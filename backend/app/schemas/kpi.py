@@ -17,7 +17,7 @@ class KPIDefinitionRead(BaseModel):
     target: Decimal
     direction: str
     source: str
-    source_type: str  # manual | api_rest | ai_agent
+    source_type: str  # manual | api_rest | ai_agent | mcp
     connector_id: uuid.UUID | None = None
     connector_name: str | None = None
     n8n_workflow_id: str | None = None
@@ -41,7 +41,7 @@ class KPIDefinitionCreate(BaseModel):
     target: Decimal
     direction: str = Field(pattern=r"^(higher_better|lower_better)$")
     source: str = Field(default="manual", max_length=50)
-    source_type: str = Field(default="manual", pattern=r"^(manual|api_rest|ai_agent)$")
+    source_type: str = Field(default="manual", pattern=r"^(manual|api_rest|ai_agent|mcp)$")
     connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
     active: bool = True
