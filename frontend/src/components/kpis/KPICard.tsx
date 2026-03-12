@@ -13,7 +13,7 @@ const statusAccent: Record<string, string> = {
   ok: "border-l-emerald-500",
   warning: "border-l-amber-500",
   ko: "border-l-red-500",
-  no_data: "border-l-slate-600",
+  no_data: "border-l-slate-400",
 };
 
 export function KPICard({ kpi, onClick, active }: KPICardProps) {
@@ -32,7 +32,7 @@ export function KPICard({ kpi, onClick, active }: KPICardProps) {
       onClick={onClick}
       className={cn(
         "card-interactive w-full border-l-[3px] p-5 text-left",
-        statusAccent[status] ?? "border-l-slate-600",
+        statusAccent[status] ?? "border-l-slate-400",
         onClick && "cursor-pointer",
         active && "ring-2 ring-secondary/30 border-secondary/20",
       )}

@@ -497,7 +497,7 @@ function StatusDot({ status }: { status: KPIStatus }) {
     ok: "bg-emerald-500",
     warning: "bg-amber-500",
     ko: "bg-red-500",
-    no_data: "bg-slate-600",
+    no_data: "bg-slate-400",
   };
   return (
     <span

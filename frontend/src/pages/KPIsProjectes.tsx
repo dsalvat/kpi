@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/useProjects";
 import { useKPIs } from "@/hooks/useKPIs";
 import { useAppStore } from "@/store";
 import { KPICard } from "@/components/kpis/KPICard";
@@ -7,7 +7,7 @@ import { KPIDetailPanel } from "@/components/kpis/KPIDetailPanel";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn, formatNumber, formatCurrency } from "@/lib/utils";
-import type { Project } from "@/types/project";
+import type { Project, ProjectCreate } from "@/types/project";
 import type { KPIDefinition } from "@/types/kpi";
 import {
   FolderKanban,
@@ -21,6 +21,10 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  Star,
+  Plus,
+  X,
+  Trash2,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<
@@ -69,6 +73,10 @@ export default function KPIsProjectes() {
   });
   const [selectedKPI, setSelectedKPI] = useState<KPIDefinition | null>(null);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   // Portfolio summary
   const summary = useMemo(() => {
@@ -89,6 +97,12 @@ export default function KPIsProjectes() {
       avgCompletion: pctCount > 0 ? Math.round(totalPct / pctCount) : null,
     };
   }, [projects]);
+
+  // Strategic KPIs (annual objectives) within this group
+  const strategicKPIs = useMemo(() => {
+    if (!kpis) return [];
+    return kpis.filter((k) => k.is_annual_objective);
+  }, [kpis]);
 
   // Group KPIs by category
   const groupedKPIs = useMemo(() => {
@@ -189,11 +203,32 @@ export default function KPIsProjectes() {
         className="animate-fade-in-up"
         style={{ animationDelay: "0.08s" }}
       >
-        <SectionHeader
-          title="Cartera de projectes"
-          icon={FolderKanban}
-          count={projects?.length}
-        />
+        <div className="flex items-center justify-between">
+          <SectionHeader
+            title="Cartera de projectes"
+            icon={FolderKanban}
+            count={projects?.length}
+          />
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-secondary px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-secondary/90"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Nou projecte
+          </button>
+        </div>
+
+        {showCreateForm && (
+          <CreateProjectForm
+            onSubmit={(data) => {
+              createProject.mutate(data, {
+                onSuccess: () => setShowCreateForm(false),
+              });
+            }}
+            onCancel={() => setShowCreateForm(false)}
+            isLoading={createProject.isPending}
+          />
+        )}
 
         {isLoading ? (
           <SkeletonCard />
@@ -234,6 +269,13 @@ export default function KPIsProjectes() {
                         expandedProject === project.id ? null : project.id,
                       )
                     }
+                    onToggleStrategic={() =>
+                      updateProject.mutate({
+                        code: project.code,
+                        data: { is_strategic: !project.is_strategic },
+                      })
+                    }
+                    onDelete={() => deleteProject.mutate(project.code)}
                   />
                 ))}
               </tbody>
@@ -246,6 +288,46 @@ export default function KPIsProjectes() {
           />
         )}
       </section>
+
+      {/* Strategic KPIs */}
+      {!isLoading && strategicKPIs.length > 0 && (
+        <section
+          className="animate-fade-in-up"
+          style={{ animationDelay: "0.11s" }}
+        >
+          <div className="mb-4 flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
+              <Star
+                className="h-4 w-4 fill-amber-400 text-amber-400"
+                strokeWidth={1.5}
+              />
+            </div>
+            <h2 className="text-display text-[15px] font-semibold text-text-primary">
+              KPIs Estratègics
+            </h2>
+            <span className="text-data text-[11px] font-medium text-text-tertiary">
+              {strategicKPIs.length}
+            </span>
+            <span className="ml-auto rounded-lg bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20">
+              Objectius anuals lligats a variable
+            </span>
+          </div>
+          <div className="stagger-children grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {strategicKPIs.map((kpi) => (
+              <KPICard
+                key={kpi.id}
+                kpi={kpi}
+                active={selectedKPI?.id === kpi.id}
+                onClick={() =>
+                  setSelectedKPI(
+                    selectedKPI?.id === kpi.id ? null : kpi,
+                  )
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Project delivery KPIs */}
       {!isLoading &&
@@ -359,10 +441,14 @@ function ProjectRow({
   project,
   expanded,
   onToggle,
+  onToggleStrategic,
+  onDelete,
 }: {
   project: Project;
   expanded: boolean;
   onToggle: () => void;
+  onToggleStrategic: () => void;
+  onDelete: () => void;
 }) {
   const config = STATUS_CONFIG[project.status];
   const pct = project.completion_pct ?? 0;
@@ -385,6 +471,13 @@ function ProjectRow({
             <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
               {project.code}
             </span>
+            {project.is_strategic && (
+              <Star
+                className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                strokeWidth={1.5}
+                aria-label="Projecte estratègic"
+              />
+            )}
             <span className="font-medium text-text-primary">
               {project.name}
             </span>
@@ -483,7 +576,11 @@ function ProjectRow({
       {expanded && (
         <tr>
           <td colSpan={7} className="bg-overlay-subtle px-4 py-4">
-            <ProjectDetail project={project} />
+            <ProjectDetail
+              project={project}
+              onToggleStrategic={onToggleStrategic}
+              onDelete={onDelete}
+            />
           </td>
         </tr>
       )}
@@ -492,7 +589,15 @@ function ProjectRow({
 }
 
 /* ── Expanded project detail ── */
-function ProjectDetail({ project }: { project: Project }) {
+function ProjectDetail({
+  project,
+  onToggleStrategic,
+  onDelete,
+}: {
+  project: Project;
+  onToggleStrategic?: () => void;
+  onDelete?: () => void;
+}) {
   const budget = project.budget_eur;
   const actual = project.actual_cost_eur;
 
@@ -542,6 +647,39 @@ function ProjectDetail({ project }: { project: Project }) {
           </div>
         </div>
       )}
+
+      {/* Actions */}
+      <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-3 pt-2 border-t border-border-subtle">
+        {onToggleStrategic && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleStrategic(); }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors",
+              project.is_strategic
+                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                : "bg-overlay-hover text-text-secondary hover:bg-overlay-active",
+            )}
+          >
+            <Star
+              className={cn("h-3.5 w-3.5", project.is_strategic && "fill-amber-400 text-amber-400")}
+              strokeWidth={1.5}
+            />
+            {project.is_strategic ? "Treure estratègic" : "Marcar estratègic"}
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Eliminar projecte ${project.code}?`)) onDelete();
+            }}
+            className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-500/10"
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+            Eliminar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -570,4 +708,170 @@ function formatDate(dateStr: string | null): string {
   } catch {
     return dateStr;
   }
+}
+
+/* ── Create project form ── */
+function CreateProjectForm({
+  onSubmit,
+  onCancel,
+  isLoading,
+}: {
+  onSubmit: (data: ProjectCreate) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [form, setForm] = useState<ProjectCreate>({
+    code: "",
+    name: "",
+    status: "active",
+    is_strategic: false,
+  });
+
+  const set = (field: keyof ProjectCreate, value: unknown) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  const fieldClass =
+    "w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20";
+
+  return (
+    <div className="card p-5 animate-fade-in-up">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-display text-[15px] font-semibold text-text-primary">
+          Nou projecte
+        </h3>
+        <button
+          onClick={onCancel}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-overlay-hover hover:text-text-secondary"
+        >
+          <X className="h-4 w-4" strokeWidth={2} />
+        </button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Codi *
+          </label>
+          <input
+            className={fieldClass}
+            placeholder="PRJ-09"
+            value={form.code}
+            onChange={(e) => set("code", e.target.value.toUpperCase())}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Nom *
+          </label>
+          <input
+            className={fieldClass}
+            placeholder="Nom del projecte"
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Estat
+          </label>
+          <select
+            className={fieldClass}
+            value={form.status}
+            onChange={(e) => set("status", e.target.value)}
+          >
+            <option value="active">Actiu</option>
+            <option value="at_risk">En risc</option>
+            <option value="blocked">Bloquejat</option>
+            <option value="completed">Completat</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Sponsor
+          </label>
+          <input
+            className={fieldClass}
+            placeholder="Nom del sponsor"
+            value={form.sponsor ?? ""}
+            onChange={(e) => set("sponsor", e.target.value || null)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Data inici
+          </label>
+          <input
+            type="date"
+            className={fieldClass}
+            value={form.start_date ?? ""}
+            onChange={(e) => set("start_date", e.target.value || null)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Data fi planificada
+          </label>
+          <input
+            type="date"
+            className={fieldClass}
+            value={form.planned_end_date ?? ""}
+            onChange={(e) => set("planned_end_date", e.target.value || null)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Pressupost (EUR)
+          </label>
+          <input
+            type="number"
+            className={fieldClass}
+            placeholder="0"
+            value={form.budget_eur ?? ""}
+            onChange={(e) =>
+              set("budget_eur", e.target.value ? Number(e.target.value) : null)
+            }
+          />
+        </div>
+      </div>
+
+      {/* Strategic toggle */}
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => set("is_strategic", !form.is_strategic)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors",
+            form.is_strategic
+              ? "bg-amber-500/10 text-amber-600"
+              : "bg-overlay-hover text-text-secondary",
+          )}
+        >
+          <Star
+            className={cn("h-3.5 w-3.5", form.is_strategic && "fill-amber-400 text-amber-400")}
+            strokeWidth={1.5}
+          />
+          {form.is_strategic ? "Estratègic" : "Marcar com estratègic"}
+        </button>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-5 flex items-center justify-end gap-3">
+        <button
+          onClick={onCancel}
+          className="rounded-lg px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-overlay-hover"
+        >
+          Cancel·lar
+        </button>
+        <button
+          onClick={() => {
+            if (form.code && form.name) onSubmit(form);
+          }}
+          disabled={!form.code || !form.name || isLoading}
+          className="rounded-xl bg-secondary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-secondary/90 disabled:opacity-50"
+        >
+          {isLoading ? "Creant..." : "Crear projecte"}
+        </button>
+      </div>
+    </div>
+  );
 }

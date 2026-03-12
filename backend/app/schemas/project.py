@@ -18,8 +18,25 @@ class ProjectRead(BaseModel):
     actual_cost_eur: Decimal | None = None
     completion_pct: int | None = None
     sponsor_satisfaction: Decimal | None = None
+    is_strategic: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class ProjectCreate(BaseModel):
+    code: str
+    name: str
+    sponsor: str | None = None
+    status: str = "active"
+    start_date: date | None = None
+    planned_end_date: date | None = None
+    actual_end_date: date | None = None
+    budget_eur: Decimal | None = None
+    actual_cost_eur: Decimal | None = None
+    completion_pct: int | None = None
+    sponsor_satisfaction: Decimal | None = None
+    description: str | None = None
+    is_strategic: bool = False
 
 
 class ProjectUpdate(BaseModel):
@@ -33,6 +50,8 @@ class ProjectUpdate(BaseModel):
     actual_cost_eur: Decimal | None = None
     completion_pct: int | None = None
     sponsor_satisfaction: Decimal | None = None
+    description: str | None = None
+    is_strategic: bool | None = None
 
 
 class ProjectsSummary(BaseModel):

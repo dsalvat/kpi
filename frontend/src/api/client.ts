@@ -2,7 +2,7 @@ import axios from "axios";
 import type { Credential, CredentialCreate, CredentialUpdate, CredentialSummary, Connector, ConnectorCreate, ConnectorUpdate, ConnectorSummary } from "@/types/connector";
 import type { Dashboard } from "@/types/dashboard";
 import type { KPIDefinition, KPIDefinitionCreate, KPIDefinitionUpdate, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
-import type { Project } from "@/types/project";
+import type { Project, ProjectCreate } from "@/types/project";
 import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
 import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
@@ -92,8 +92,12 @@ export const connectorApi = {
 
 export const projectApi = {
   list: () => api.get<Project[]>("/projects/"),
+  create: (data: ProjectCreate) =>
+    api.post<Project>("/projects/", data),
   update: (code: string, data: Partial<Project>) =>
     api.put<Project>(`/projects/${code}`, data),
+  delete: (code: string) =>
+    api.delete(`/projects/${code}`),
 };
 
 export const okrApi = {

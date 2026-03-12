@@ -16,6 +16,8 @@ import {
   Monitor,
 } from "lucide-react";
 
+/* Note: lucide Star is used for both category "qualitat" icon and annual objective indicator */
+
 const CATEGORY_META: Record<
   string,
   { label: string; icon: typeof Shield; order: number }
@@ -58,6 +60,12 @@ export default function KPIsServeis() {
         kpis: items,
       }))
       .sort((a, b) => a.meta.order - b.meta.order);
+  }, [kpis]);
+
+  // Strategic KPIs (annual objectives) within this group
+  const strategicKPIs = useMemo(() => {
+    if (!kpis) return [];
+    return kpis.filter((k) => k.is_annual_objective);
   }, [kpis]);
 
   // Global summary
@@ -129,6 +137,46 @@ export default function KPIsServeis() {
           title="Sense KPIs de serveis"
           description="No hi ha KPIs de serveis definits per a aquest any."
         />
+      )}
+
+      {/* Strategic KPIs */}
+      {!isLoading && strategicKPIs.length > 0 && (
+        <section
+          className="animate-fade-in-up"
+          style={{ animationDelay: "0.04s" }}
+        >
+          <div className="mb-4 flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10">
+              <Star
+                className="h-4 w-4 fill-amber-400 text-amber-400"
+                strokeWidth={1.5}
+              />
+            </div>
+            <h2 className="text-display text-[15px] font-semibold text-text-primary">
+              KPIs Estratègics
+            </h2>
+            <span className="text-data text-[11px] font-medium text-text-tertiary">
+              {strategicKPIs.length}
+            </span>
+            <span className="ml-auto rounded-lg bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20">
+              Objectius anuals lligats a variable
+            </span>
+          </div>
+          <div className="stagger-children grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {strategicKPIs.map((kpi) => (
+              <KPICard
+                key={kpi.id}
+                kpi={kpi}
+                active={selectedKPI?.id === kpi.id}
+                onClick={() =>
+                  setSelectedKPI(
+                    selectedKPI?.id === kpi.id ? null : kpi,
+                  )
+                }
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Grouped KPI sections */}

@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Date, Numeric, String, Text
+from sqlalchemy import Boolean, Date, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -24,3 +24,4 @@ class Project(Base):
     completion_pct: Mapped[int | None] = mapped_column(nullable=True)
     sponsor_satisfaction: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_strategic: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

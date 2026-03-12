@@ -22,11 +22,11 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedYear: (year) => set({ selectedYear: year }),
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  theme: "auto",
+  theme: "light",
   setTheme: (theme) =>
     set({
       theme,
       resolvedTheme: theme === "auto" ? getAutoTheme() : theme,
     }),
-  resolvedTheme: getAutoTheme(),
+  resolvedTheme: "light",
 }));

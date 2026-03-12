@@ -11,6 +11,20 @@ export interface Project {
   actual_cost_eur: number | null;
   completion_pct: number | null;
   sponsor_satisfaction: number | null;
+  is_strategic: boolean;
+}
+
+export interface ProjectCreate {
+  code: string;
+  name: string;
+  sponsor?: string | null;
+  status?: string;
+  start_date?: string | null;
+  planned_end_date?: string | null;
+  budget_eur?: number | null;
+  completion_pct?: number | null;
+  description?: string | null;
+  is_strategic?: boolean;
 }
 
 export interface ProjectsSummary {

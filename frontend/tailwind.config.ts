@@ -46,16 +46,16 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"DM Sans"', "system-ui", "sans-serif"],
-        display: ['"Outfit"', "system-ui", "sans-serif"],
-        mono: ['"IBM Plex Mono"', '"Menlo"', "monospace"],
+        sans: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
+        display: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
       },
       boxShadow: {
         card: "var(--shadow-card)",
         "card-hover": "var(--shadow-card-hover)",
       },
       borderRadius: {
-        card: "12px",
+        card: "14px",
       },
       zIndex: {
         nav: "100",

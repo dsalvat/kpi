@@ -430,7 +430,7 @@ function QuarterCell({
   const statusDot = {
     ok: "bg-emerald-500",
     warning: "bg-amber-500",
-    pending: "bg-slate-600",
+    pending: "bg-slate-400",
   };
 
   if (editing) {

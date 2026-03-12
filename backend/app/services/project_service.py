@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
-from app.schemas.project import ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectUpdate
 
 
 async def list_projects(db: AsyncSession) -> list[Project]:
@@ -17,6 +17,14 @@ async def get_project_by_code(db: AsyncSession, code: str) -> Project | None:
     return result.scalar_one_or_none()
 
 
+async def create_project(db: AsyncSession, data: ProjectCreate) -> Project:
+    project = Project(**data.model_dump())
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+    return project
+
+
 async def update_project(db: AsyncSession, code: str, data: ProjectUpdate) -> Project | None:
     project = await get_project_by_code(db, code)
     if not project:
@@ -27,6 +35,15 @@ async def update_project(db: AsyncSession, code: str, data: ProjectUpdate) -> Pr
     await db.commit()
     await db.refresh(project)
     return project
+
+
+async def delete_project(db: AsyncSession, code: str) -> bool:
+    project = await get_project_by_code(db, code)
+    if not project:
+        return False
+    await db.delete(project)
+    await db.commit()
+    return True
 
 
 async def get_projects_summary(db: AsyncSession) -> dict:

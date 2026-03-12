@@ -56,28 +56,33 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-nav flex h-full flex-col gradient-sidebar border-r border-white/[0.06] text-white transition-all duration-200 ease-out",
+        "fixed left-0 top-0 z-nav flex h-full flex-col bg-surface border-r border-border transition-all duration-200 ease-out",
         sidebarOpen ? "w-60" : "w-[68px]",
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-white/[0.06] px-5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/20">
-          <BarChart3 className="h-4 w-4 text-secondary" strokeWidth={2} />
+      <div className="flex h-16 items-center gap-3 border-b border-border px-5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-white">
+          <BarChart3 className="h-[18px] w-[18px]" strokeWidth={2.2} />
         </div>
         {sidebarOpen && (
-          <p className="truncate font-display text-[15px] font-semibold tracking-tight">
-            IT Command Center
-          </p>
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold tracking-tight text-text-primary">
+              IT KPIs
+            </p>
+            <p className="truncate text-[10px] font-medium text-text-tertiary">
+              Dept. Sistemes
+            </p>
+          </div>
         )}
       </div>
 
       {/* Nav groups */}
-      <nav className="mt-2 flex-1 overflow-y-auto px-3" aria-label="Navegacio principal">
+      <nav className="mt-3 flex-1 overflow-y-auto px-3" aria-label="Navegacio principal">
         {navGroups.map((group) => (
-          <div key={group.label} className="mb-4">
+          <div key={group.label} className="mb-5">
             {sidebarOpen && (
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
                 {group.label}
               </p>
             )}
@@ -91,10 +96,10 @@ export function Sidebar() {
                     end={item.path === "/"}
                     className={({ isActive }) =>
                       cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
+                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
                         isActive
-                          ? "bg-secondary text-white shadow-lg shadow-secondary/20"
-                          : "text-white/50 hover:bg-white/[0.06] hover:text-white/80",
+                          ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] font-semibold"
+                          : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-text-primary",
                       )
                     }
                   >
@@ -109,10 +114,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-white/[0.06] p-3">
+      <div className="border-t border-border p-3">
         <button
           onClick={toggleSidebar}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-white/30 transition-colors hover:bg-white/[0.06] hover:text-white/60"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] text-text-tertiary transition-colors hover:bg-[var(--sidebar-hover)] hover:text-text-secondary"
           aria-label={sidebarOpen ? "Replegar sidebar" : "Expandir sidebar"}
         >
           {sidebarOpen ? (
@@ -125,7 +130,7 @@ export function Sidebar() {
           )}
         </button>
         {sidebarOpen && (
-          <p className="mt-2 px-3 text-[10px] font-medium uppercase tracking-wider text-white/20">
+          <p className="mt-2 px-3 text-[10px] font-medium text-text-tertiary/60">
             Dept. Sistemes IT
           </p>
         )}
