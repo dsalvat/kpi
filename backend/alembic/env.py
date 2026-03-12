@@ -18,6 +18,8 @@ from app.models import (  # noqa: F401 - ensure all models are imported
     OKRQuarterlyData,
     ValueItem,
     N8nSyncLog,
+    BudgetItem,
+    BudgetLookup,
 )
 
 config = context.config

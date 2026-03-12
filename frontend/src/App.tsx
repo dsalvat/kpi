@@ -10,6 +10,7 @@ import ValorNegoci from "@/pages/ValorNegoci";
 import EntradaDades from "@/pages/EntradaDades";
 import MasterDades from "@/pages/MasterDades";
 import Settings from "@/pages/Settings";
+import GestioPressupostaria from "@/pages/GestioPressupostaria";
 
 export default function App() {
   useThemeEffect();
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/valor-negoci" element={<ValorNegoci />} />
           <Route path="/entrada-dades" element={<EntradaDades />} />
           <Route path="/master-dades" element={<MasterDades />} />
+          <Route path="/pressupost" element={<GestioPressupostaria />} />
           <Route path="/configuracio" element={<Settings />} />
         </Route>
       </Routes>

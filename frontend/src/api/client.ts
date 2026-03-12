@@ -5,6 +5,7 @@ import type { KPIDefinition, KPIDefinitionCreate, KPIDefinitionUpdate, KPIValue,
 import type { Project } from "@/types/project";
 import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
+import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -107,6 +108,31 @@ export const valueApi = {
     api.get<ValueSummary>("/value/", { params: { year } }),
   getRoi: (year?: number) =>
     api.get<ROI>("/value/roi", { params: { year } }),
+};
+
+export const budgetApi = {
+  list: (year: number, includeInactive = false) =>
+    api.get<BudgetItem[]>("/budget/", { params: { year, include_inactive: includeInactive } }),
+  get: (id: string) =>
+    api.get<BudgetItem>(`/budget/${id}/`),
+  create: (data: BudgetItemCreate) =>
+    api.post<BudgetItem>("/budget/", data),
+  update: (id: string, data: BudgetItemUpdate) =>
+    api.put<BudgetItem>(`/budget/${id}/`, data),
+  delete: (id: string) =>
+    api.delete(`/budget/${id}/`),
+  summary: (year: number) =>
+    api.get<BudgetSummary>(`/budget/summary/`, { params: { year } }),
+  years: () =>
+    api.get<{ years: number[] }>("/budget/years/"),
+  listLookups: (category?: BudgetLookupCategory, includeInactive = false) =>
+    api.get<BudgetLookup[]>("/budget/lookups/", { params: { category, include_inactive: includeInactive } }),
+  createLookup: (data: BudgetLookupCreate) =>
+    api.post<BudgetLookup>("/budget/lookups/", data),
+  updateLookup: (id: string, data: BudgetLookupUpdate) =>
+    api.put<BudgetLookup>(`/budget/lookups/${id}/`, data),
+  deleteLookup: (id: string) =>
+    api.delete(`/budget/lookups/${id}/`),
 };
 
 export default api;

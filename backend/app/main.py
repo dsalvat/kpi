@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, connectors, dashboard, ingest, kpis, okrs, projects, value
+from app.routers import auth, budget, connectors, dashboard, ingest, kpis, okrs, projects, value
 
 app = FastAPI(title="KPI Platform API", version="0.1.0")
 
@@ -21,6 +21,7 @@ app.include_router(projects.router)
 app.include_router(okrs.router)
 app.include_router(value.router)
 app.include_router(connectors.router)
+app.include_router(budget.router)
 
 
 @app.get("/health")

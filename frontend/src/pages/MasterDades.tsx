@@ -9,6 +9,13 @@ import {
   useDeleteKPIDefinition,
 } from "@/hooks/useKPIs";
 import { useConnectorsSummary } from "@/hooks/useConnectors";
+import {
+  useBudgetLookups,
+  useCreateBudgetLookup,
+  useUpdateBudgetLookup,
+  useDeleteBudgetLookup,
+} from "@/hooks/useBudget";
+import type { BudgetLookup, BudgetLookupCategory } from "@/types/budget";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { cn } from "@/lib/utils";
 import type {
@@ -34,6 +41,8 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
+  Wallet,
+  GripVertical,
 } from "lucide-react";
 
 type GroupFilter = "all" | KPIGroup;
@@ -97,7 +106,10 @@ function reprefix(code: string, oldGroup: KPIGroup, newGroup: KPIGroup): string 
   return newPrefix + code.replace(/^[A-Z]+-/, "");
 }
 
+type MasterTab = "kpis" | "budget";
+
 export default function MasterDades() {
+  const [activeTab, setActiveTab] = useState<MasterTab>("kpis");
   const [includeInactive, setIncludeInactive] = useState(false);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,9 +163,43 @@ export default function MasterDades() {
           Master de Dades
         </h1>
         <p className="mt-1 text-[13px] text-text-tertiary">
-          Gestiona les definicions d'indicadors: codi, nom, descripció, mètode de càlcul i anys associats.
+          Gestiona definicions d'indicadors, categories pressupostàries i dades mestres.
         </p>
       </div>
+
+      {/* Tabs */}
+      <div className="animate-fade-in flex gap-1 rounded-lg border border-border bg-surface p-1" style={{ animationDelay: "0.02s" }}>
+        <button
+          onClick={() => setActiveTab("kpis")}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-4 py-2 text-[13px] font-medium transition-colors",
+            activeTab === "kpis"
+              ? "bg-secondary text-white"
+              : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-muted",
+          )}
+        >
+          <Settings2 className="h-4 w-4" strokeWidth={2} />
+          Indicadors KPI
+        </button>
+        <button
+          onClick={() => setActiveTab("budget")}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-4 py-2 text-[13px] font-medium transition-colors",
+            activeTab === "budget"
+              ? "bg-secondary text-white"
+              : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-muted",
+          )}
+        >
+          <Wallet className="h-4 w-4" strokeWidth={2} />
+          Dades Pressupostàries
+        </button>
+      </div>
+
+      {/* Budget lookups tab */}
+      {activeTab === "budget" && <BudgetLookupsPanel />}
+
+      {/* KPI tab - Toolbar */}
+      {activeTab === "kpis" && <>
 
       {/* Toolbar */}
       <div
@@ -307,6 +353,8 @@ export default function MasterDades() {
           )}
         </div>
       )}
+
+      </>}
     </div>
   );
 }
@@ -1020,6 +1068,197 @@ function YearManager() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Budget Lookups Panel ── */
+
+const LOOKUP_CATEGORIES: { key: BudgetLookupCategory; label: string; placeholder: string }[] = [
+  { key: "team", label: "Equips", placeholder: "Ex: Sistemas, Integracions..." },
+  { key: "expense_type", label: "Tipus de Despesa", placeholder: "Ex: Consultoria, Llicència..." },
+  { key: "classification", label: "Classificació", placeholder: "Ex: Manteniment, Seguretat..." },
+  { key: "cost_center", label: "Centre de Cost", placeholder: "Ex: DESOPI, Botiguees..." },
+];
+
+function BudgetLookupsPanel() {
+  const { data: allLookups, isLoading } = useBudgetLookups(undefined, true);
+  const createMutation = useCreateBudgetLookup();
+  const updateMutation = useUpdateBudgetLookup();
+  const deleteMutation = useDeleteBudgetLookup();
+
+  const [newValues, setNewValues] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const lookupsByCategory = useMemo(() => {
+    const map: Record<string, BudgetLookup[]> = {};
+    for (const cat of LOOKUP_CATEGORIES) {
+      map[cat.key] = (allLookups ?? [])
+        .filter((l) => l.category === cat.key)
+        .sort((a, b) => a.display_order - b.display_order || a.value.localeCompare(b.value));
+    }
+    return map;
+  }, [allLookups]);
+
+  const handleAdd = async (category: BudgetLookupCategory) => {
+    const val = (newValues[category] ?? "").trim();
+    if (!val) return;
+    const existing = lookupsByCategory[category] ?? [];
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((l) => l.display_order)) : 0;
+    await createMutation.mutateAsync({ category, value: val, display_order: maxOrder + 1 });
+    setNewValues((prev) => ({ ...prev, [category]: "" }));
+  };
+
+  const handleStartEdit = (lookup: BudgetLookup) => {
+    setEditingId(lookup.id);
+    setEditValue(lookup.value);
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editValue.trim()) return;
+    await updateMutation.mutateAsync({ id, data: { value: editValue.trim() } });
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteMutation.mutateAsync(id);
+  };
+
+  const handleToggleActive = async (lookup: BudgetLookup) => {
+    await updateMutation.mutateAsync({ id: lookup.id, data: { active: !lookup.active } });
+  };
+
+  if (isLoading) {
+    return <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>;
+  }
+
+  return (
+    <div className="animate-fade-in-up grid gap-6 md:grid-cols-2" style={{ animationDelay: "0.03s" }}>
+      {LOOKUP_CATEGORIES.map((cat) => {
+        const items = lookupsByCategory[cat.key] ?? [];
+        return (
+          <div key={cat.key} className="card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-overlay-subtle px-4 py-2.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+                {cat.label} ({items.filter((i) => i.active).length})
+              </span>
+            </div>
+
+            <div className="max-h-[320px] overflow-y-auto">
+              {items.length === 0 ? (
+                <p className="px-4 py-6 text-center text-[12px] text-text-tertiary">
+                  Sense valors. Afegeix-ne un a continuació.
+                </p>
+              ) : (
+                <div className="divide-y divide-border-subtle">
+                  {items.map((lookup) => (
+                    <div
+                      key={lookup.id}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 transition-colors",
+                        !lookup.active && "opacity-40",
+                      )}
+                    >
+                      <GripVertical className="h-3 w-3 shrink-0 text-text-tertiary/30" strokeWidth={2} />
+                      {editingId === lookup.id ? (
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveEdit(lookup.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          className="flex-1 rounded border border-secondary/40 bg-overlay-muted px-2 py-1 text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="flex-1 text-[12px] text-text-primary">{lookup.value}</span>
+                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {editingId === lookup.id ? (
+                          <>
+                            <button
+                              onClick={() => handleSaveEdit(lookup.id)}
+                              className="rounded p-1 text-emerald-400 hover:bg-emerald-500/10"
+                              aria-label="Guardar"
+                            >
+                              <Save className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="rounded p-1 text-text-tertiary hover:bg-overlay-muted"
+                              aria-label="Cancel·lar"
+                            >
+                              <X className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleToggleActive(lookup)}
+                              className={cn(
+                                "rounded p-1 transition-colors",
+                                lookup.active
+                                  ? "text-emerald-400 hover:bg-emerald-500/10"
+                                  : "text-text-tertiary hover:bg-overlay-muted",
+                              )}
+                              aria-label={lookup.active ? "Desactivar" : "Activar"}
+                            >
+                              {lookup.active ? (
+                                <CheckCircle2 className="h-3 w-3" strokeWidth={2} />
+                              ) : (
+                                <XCircle className="h-3 w-3" strokeWidth={2} />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleStartEdit(lookup)}
+                              className="rounded p-1 text-text-tertiary hover:bg-overlay-muted hover:text-secondary"
+                              aria-label="Editar"
+                            >
+                              <Pencil className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(lookup.id)}
+                              className="rounded p-1 text-text-tertiary hover:bg-red-500/10 hover:text-red-400"
+                              aria-label="Eliminar"
+                            >
+                              <Trash2 className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add new value */}
+            <div className="flex items-center gap-2 border-t border-border-subtle bg-overlay-subtle px-4 py-2.5">
+              <input
+                type="text"
+                value={newValues[cat.key] ?? ""}
+                onChange={(e) => setNewValues((prev) => ({ ...prev, [cat.key]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAdd(cat.key);
+                }}
+                placeholder={cat.placeholder}
+                className="flex-1 rounded-lg border border-border bg-overlay-muted px-3 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary/40 focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-colors"
+              />
+              <button
+                onClick={() => handleAdd(cat.key)}
+                disabled={createMutation.isPending || !(newValues[cat.key] ?? "").trim()}
+                className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-secondary-light disabled:opacity-40"
+              >
+                <Plus className="h-3 w-3" strokeWidth={2} />
+                Afegir
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

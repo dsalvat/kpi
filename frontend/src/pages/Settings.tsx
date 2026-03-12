@@ -21,7 +21,6 @@ import type {
   AuthType,
 } from "@/types/connector";
 import {
-  Settings2,
   Plus,
   Pencil,
   Trash2,

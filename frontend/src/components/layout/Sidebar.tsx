@@ -11,6 +11,7 @@ import {
   Database,
   Settings2,
   Wrench,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store";
@@ -42,6 +43,7 @@ const navGroups: NavGroup[] = [
     label: "Gestio de Dades",
     items: [
       { path: "/entrada-dades", label: "Entrada de Dades", icon: Database },
+      { path: "/pressupost", label: "Pressupost", icon: Wallet },
       { path: "/master-dades", label: "Master de Dades", icon: Settings2 },
       { path: "/configuracio", label: "Configuració", icon: Wrench },
     ],
