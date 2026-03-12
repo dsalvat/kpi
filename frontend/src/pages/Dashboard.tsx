@@ -15,18 +15,20 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  Star,
 } from "lucide-react";
 
 export default function Dashboard() {
   const year = useAppStore((s) => s.selectedYear);
   const { data, isLoading, error } = useDashboard();
 
-  // Split KPIs into SRV-* and PRJ-M*
-  const { srvKPIs, prjKPIs } = useMemo(() => {
-    if (!data?.kpi_summary) return { srvKPIs: [], prjKPIs: [] };
+  // Split KPIs into SRV-*, PRJ-M*, and strategic
+  const { srvKPIs, prjKPIs, strategicKPIs } = useMemo(() => {
+    if (!data?.kpi_summary) return { srvKPIs: [], prjKPIs: [], strategicKPIs: [] };
     return {
       srvKPIs: data.kpi_summary.filter((k) => k.code.startsWith("SRV")),
       prjKPIs: data.kpi_summary.filter((k) => k.code.startsWith("PRJ")),
+      strategicKPIs: data.kpi_summary.filter((k) => k.is_annual_objective),
     };
   }, [data]);
 
@@ -75,6 +77,22 @@ export default function Dashboard() {
           Resum executiu del Departament de Sistemes IT
         </p>
       </div>
+
+      {/* ── 0. KPIs Estratègics — annual objectives ── */}
+      {!isLoading && strategicKPIs.length > 0 && (
+        <section
+          className="animate-fade-in-up"
+          style={{ animationDelay: "0.02s" }}
+        >
+          <SectionHeader title="KPIs Estratègics" icon={Star}>
+            <span className="flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20">
+              <Star className="h-3 w-3 fill-amber-400" strokeWidth={1.5} />
+              Objectius anuals lligats a variable
+            </span>
+          </SectionHeader>
+          <KPICompactTable kpis={strategicKPIs} showStar />
+        </section>
+      )}
 
       {/* ── 1. KPIs Serveis — compact table ── */}
       <section
@@ -291,7 +309,7 @@ function SectionHeader({
 }
 
 /* ── Compact KPI table ── */
-function KPICompactTable({ kpis }: { kpis: KPIDefinition[] }) {
+function KPICompactTable({ kpis, showStar }: { kpis: KPIDefinition[]; showStar?: boolean }) {
   return (
     <div className="card overflow-hidden">
       <table className="w-full text-[13px]">
@@ -323,9 +341,18 @@ function KPICompactTable({ kpis }: { kpis: KPIDefinition[] }) {
                 className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-overlay-subtle"
               >
                 <td className="px-4 py-2">
-                  <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
-                    {kpi.code}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
+                      {kpi.code}
+                    </span>
+                    {(showStar || kpi.is_annual_objective) && (
+                      <Star
+                        className="h-3 w-3 fill-amber-400 text-amber-400"
+                        strokeWidth={1.5}
+                        aria-label="Objectiu anual"
+                      />
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-2 text-text-secondary">{kpi.name}</td>
                 <td className="px-4 py-2 text-right">

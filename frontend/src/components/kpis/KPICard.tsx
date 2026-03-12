@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn, formatNumber } from "@/lib/utils";
 import type { KPIDefinition } from "@/types/kpi";
+import { Star } from "lucide-react";
 
 interface KPICardProps {
   kpi: KPIDefinition;
@@ -39,9 +40,18 @@ export function KPICard({ kpi, onClick, active }: KPICardProps) {
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-secondary">
-            {kpi.code}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-secondary">
+              {kpi.code}
+            </p>
+            {kpi.is_annual_objective && (
+              <Star
+                className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                strokeWidth={1.5}
+                aria-label="Objectiu anual lligat a variable"
+              />
+            )}
+          </div>
           <p className="mt-0.5 truncate text-[13px] font-medium text-text-secondary">
             {kpi.name}
           </p>

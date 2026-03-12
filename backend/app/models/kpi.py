@@ -32,6 +32,7 @@ class KPIDefinition(Base):
         ForeignKey("connectors.id", ondelete="SET NULL"), nullable=True
     )
     n8n_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_annual_objective: Mapped[bool] = mapped_column(default=False)
     active: Mapped[bool] = mapped_column(default=True)
 
     values: Mapped[list["KPIValue"]] = relationship(back_populates="kpi", cascade="all, delete-orphan")

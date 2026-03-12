@@ -21,6 +21,7 @@ class KPIDefinitionRead(BaseModel):
     connector_id: uuid.UUID | None = None
     connector_name: str | None = None
     n8n_workflow_id: str | None = None
+    is_annual_objective: bool = False
     active: bool
     years: list[int] = []
     current_value: Decimal | None = None
@@ -44,6 +45,7 @@ class KPIDefinitionCreate(BaseModel):
     source_type: str = Field(default="manual", pattern=r"^(manual|api_rest|ai_agent|mcp)$")
     connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
+    is_annual_objective: bool = False
     active: bool = True
     years: list[int] = []
 
@@ -62,6 +64,7 @@ class KPIDefinitionUpdate(BaseModel):
     source_type: str | None = None
     connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
+    is_annual_objective: bool | None = None
     active: bool | None = None
     years: list[int] | None = None
 

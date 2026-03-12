@@ -12,6 +12,7 @@ import {
   AlertCircle,
   ChevronRight,
   Save,
+  Star,
 } from "lucide-react";
 
 const MONTHS_SHORT = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
@@ -138,6 +139,9 @@ export default function EntradaDades() {
                         <span className="text-data text-[10px] font-semibold uppercase tracking-wider text-secondary">
                           {kpi.code}
                         </span>
+                        {kpi.is_annual_objective && (
+                          <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" strokeWidth={1.5} aria-label="Objectiu anual" />
+                        )}
                         {isAuto && (
                           <Wifi className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2} />
                         )}
@@ -214,6 +218,9 @@ function KPIEditPanel({ kpi, year }: { kpi: KPIDefinition; year: number }) {
             <span className="text-data text-[12px] font-semibold uppercase tracking-wider text-secondary">
               {kpi.code}
             </span>
+            {kpi.is_annual_objective && (
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" strokeWidth={1.5} aria-label="Objectiu anual" />
+            )}
             <span className="text-[13px] font-medium text-text-primary">
               {kpi.name}
             </span>

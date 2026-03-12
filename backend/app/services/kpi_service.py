@@ -48,6 +48,7 @@ async def _enrich_kpi(db: AsyncSession, kpi: KPIDefinition, year: int | None = N
         "connector_id": kpi.connector_id,
         "connector_name": connector_name,
         "n8n_workflow_id": kpi.n8n_workflow_id,
+        "is_annual_objective": kpi.is_annual_objective,
         "active": kpi.active,
         "years": years,
         "current_value": None,
@@ -108,6 +109,7 @@ async def create_kpi_definition(db: AsyncSession, data: KPIDefinitionCreate) -> 
         source_type=data.source_type,
         connector_id=data.connector_id,
         n8n_workflow_id=data.n8n_workflow_id,
+        is_annual_objective=data.is_annual_objective,
         active=data.active,
     )
     db.add(kpi)

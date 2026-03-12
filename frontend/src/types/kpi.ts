@@ -19,6 +19,7 @@ export interface KPIDefinition {
   connector_id: string | null;
   connector_name: string | null;
   n8n_workflow_id: string | null;
+  is_annual_objective: boolean;
   active: boolean;
   years: number[];
   current_value: number | null;
@@ -40,6 +41,7 @@ export interface KPIDefinitionCreate {
   source_type?: SourceType;
   connector_id?: string | null;
   n8n_workflow_id?: string;
+  is_annual_objective?: boolean;
   active?: boolean;
   years: number[];
 }
@@ -58,6 +60,7 @@ export interface KPIDefinitionUpdate {
   source_type?: SourceType;
   connector_id?: string | null;
   n8n_workflow_id?: string | null;
+  is_annual_objective?: boolean;
   active?: boolean;
   years?: number[];
 }

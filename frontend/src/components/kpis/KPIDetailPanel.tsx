@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { X, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, TrendingUp, TrendingDown, Minus, Star } from "lucide-react";
 import { useKPIValues } from "@/hooks/useKPIs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn, formatNumber } from "@/lib/utils";
@@ -102,6 +102,9 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
               <span className="text-data text-[13px] font-semibold uppercase tracking-wider text-secondary">
                 {kpi.code}
               </span>
+              {kpi.is_annual_objective && (
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" strokeWidth={1.5} aria-label="Objectiu anual" />
+              )}
               <StatusBadge status={status} />
             </div>
             <h3 className="mt-1 text-display text-lg font-semibold text-text-primary">

@@ -43,6 +43,7 @@ import {
   XCircle,
   Wallet,
   GripVertical,
+  Star,
 } from "lucide-react";
 
 type GroupFilter = "all" | KPIGroup;
@@ -391,9 +392,18 @@ function KPIRow({
         )}
       >
         <td className="px-4 py-2.5">
-          <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
-            {kpi.code}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
+              {kpi.code}
+            </span>
+            {kpi.is_annual_objective && (
+              <Star
+                className="h-3 w-3 fill-amber-400 text-amber-400"
+                strokeWidth={1.5}
+                aria-label="Objectiu anual"
+              />
+            )}
+          </div>
         </td>
         <td className="px-4 py-2.5">
           <button
@@ -537,6 +547,7 @@ function KPIForm({
         source_type: kpi.source_type ?? "manual",
         connector_id: kpi.connector_id ?? null,
         n8n_workflow_id: kpi.n8n_workflow_id ?? undefined,
+        is_annual_objective: kpi.is_annual_objective ?? false,
         active: kpi.active,
         years: [...kpi.years],
       };
@@ -604,6 +615,7 @@ function KPIForm({
           source: form.source,
           source_type: form.source_type,
           connector_id: form.source_type === "manual" ? null : form.connector_id,
+          is_annual_objective: form.is_annual_objective,
           active: form.active,
           years: form.years,
         };
@@ -861,6 +873,40 @@ function KPIForm({
                 {y}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Annual objective toggle */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setField("is_annual_objective", !form.is_annual_objective)}
+            className={cn(
+              "relative h-6 w-11 rounded-full transition-colors",
+              form.is_annual_objective ? "bg-amber-500" : "bg-overlay-active",
+            )}
+            role="switch"
+            aria-checked={form.is_annual_objective}
+            aria-label="Objectiu anual lligat a variable"
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform shadow-sm",
+                form.is_annual_objective && "translate-x-5",
+              )}
+            />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <Star
+              className={cn(
+                "h-3.5 w-3.5",
+                form.is_annual_objective ? "fill-amber-400 text-amber-400" : "text-text-tertiary",
+              )}
+              strokeWidth={1.5}
+            />
+            <span className="text-[12px] font-medium text-text-secondary">
+              Objectiu anual lligat a variable
+            </span>
           </div>
         </div>
 
