@@ -6,6 +6,7 @@ import type { Project, ProjectCreate } from "@/types/project";
 import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
 import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
+import type { Company, CompanyCreate, Department, DepartmentCreate, Area, AreaCreate, Team, TeamCreate, TeamSummary, Member, MemberCreate, MemberUpdate, MemberSummary } from "@/types/organization";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -137,6 +138,56 @@ export const budgetApi = {
     api.put<BudgetLookup>(`/budget/lookups/${id}/`, data),
   deleteLookup: (id: string) =>
     api.delete(`/budget/lookups/${id}/`),
+};
+
+export const organizationApi = {
+  // Companies
+  listCompanies: () =>
+    api.get<Company[]>("/organization/companies/"),
+  createCompany: (data: CompanyCreate) =>
+    api.post<Company>("/organization/companies/", data),
+  updateCompany: (id: string, data: Partial<Company>) =>
+    api.put<Company>(`/organization/companies/${id}`, data),
+
+  // Departments
+  listDepartments: (companyId: string) =>
+    api.get<Department[]>(`/organization/companies/${companyId}/departments/`),
+  createDepartment: (companyId: string, data: DepartmentCreate) =>
+    api.post<Department>(`/organization/companies/${companyId}/departments/`, data),
+  updateDepartment: (id: string, data: Partial<Department>) =>
+    api.put<Department>(`/organization/departments/${id}`, data),
+  deleteDepartment: (id: string) =>
+    api.delete(`/organization/departments/${id}`),
+
+  // Areas
+  createArea: (data: AreaCreate) =>
+    api.post<Area>("/organization/areas/", data),
+  updateArea: (id: string, data: Partial<Area>) =>
+    api.put<Area>(`/organization/areas/${id}`, data),
+  deleteArea: (id: string) =>
+    api.delete(`/organization/areas/${id}`),
+
+  // Teams
+  createTeam: (data: TeamCreate) =>
+    api.post<Team>("/organization/teams/", data),
+  updateTeam: (id: string, data: Partial<Team>) =>
+    api.put<Team>(`/organization/teams/${id}`, data),
+  deleteTeam: (id: string) =>
+    api.delete(`/organization/teams/${id}`),
+  listTeamsSummary: (companyId: string) =>
+    api.get<TeamSummary[]>(`/organization/companies/${companyId}/teams/summary`),
+
+  // Members
+  listMembers: (companyId: string, teamId?: string) =>
+    api.get<Member[]>(`/organization/companies/${companyId}/members/`, { params: { team_id: teamId } }),
+  listMembersSummary: (companyId: string) =>
+    api.get<MemberSummary[]>(`/organization/companies/${companyId}/members/summary`),
+  createMember: (companyId: string, data: MemberCreate) =>
+    api.post<Member>(`/organization/companies/${companyId}/members/`, data),
+  updateMember: (id: string, data: MemberUpdate) =>
+    api.put<Member>(`/organization/members/${id}`, data),
+  deleteMember: (id: string) =>
+    api.delete(`/organization/members/${id}`),
 };
 
 export default api;

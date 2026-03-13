@@ -7,6 +7,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.config import settings
 from app.database import Base
 from app.models import (  # noqa: F401 - ensure all models are imported
+    Company,
+    Department,
+    Area,
+    Team,
+    Member,
     Credential,
     Connector,
     KPIDefinition,

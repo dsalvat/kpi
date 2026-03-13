@@ -1,3 +1,4 @@
+from app.models.organization import Company, Department, Area, Team, Member  # noqa: F401
 from app.models.connector import Credential, Connector  # noqa: F401
 from app.models.kpi import KPIDefinition, KPIValue, KPIYearAssignment  # noqa: F401
 from app.models.project import Project  # noqa: F401

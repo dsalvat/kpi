@@ -12,6 +12,7 @@ import {
   Settings2,
   Wrench,
   Wallet,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store";
@@ -44,6 +45,7 @@ const navGroups: NavGroup[] = [
     items: [
       { path: "/entrada-dades", label: "Entrada de Dades", icon: Database },
       { path: "/pressupost", label: "Pressupost", icon: Wallet },
+      { path: "/departament", label: "Departament", icon: Building2 },
       { path: "/master-dades", label: "Master de Dades", icon: Settings2 },
       { path: "/configuracio", label: "Configuració", icon: Wrench },
     ],

@@ -31,7 +31,7 @@ export function KPICard({ kpi, onClick, active }: KPICardProps) {
     <button
       onClick={onClick}
       className={cn(
-        "card-interactive w-full border-l-[3px] p-5 text-left",
+        "card-interactive w-full border-l-[3px] p-4 text-left",
         statusAccent[status] ?? "border-l-slate-400",
         onClick && "cursor-pointer",
         active && "ring-2 ring-secondary/30 border-secondary/20",
@@ -52,56 +52,55 @@ export function KPICard({ kpi, onClick, active }: KPICardProps) {
               />
             )}
           </div>
-          <p className="mt-0.5 truncate text-[13px] font-medium text-text-secondary">
+          <p className="mt-0.5 text-[13px] leading-snug font-medium text-text-secondary">
             {kpi.name}
           </p>
         </div>
         <StatusBadge status={status} />
       </div>
 
-      {/* Value */}
-      <div className="mt-4">
+      {/* Value + Target row */}
+      <div className="mt-3 flex items-baseline justify-between gap-2">
         {kpi.current_value != null ? (
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-data text-2xl font-semibold text-text-primary">
+          <div className="flex items-baseline gap-1">
+            <span className="text-data text-xl font-semibold text-text-primary">
               {formatNumber(kpi.current_value)}
             </span>
-            <span className="text-[13px] text-text-tertiary">{kpi.unit}</span>
+            <span className="text-[12px] text-text-tertiary">{kpi.unit}</span>
           </div>
         ) : (
-          <span className="text-sm text-text-tertiary">Sense dades</span>
+          <span className="text-[13px] text-text-tertiary">Sense dades</span>
         )}
-        <p className="mt-0.5 text-[11px] text-text-tertiary">
+        <span className="text-[11px] text-text-tertiary">
           Target: {formatNumber(kpi.target)} {kpi.unit}
-        </p>
+        </span>
       </div>
 
       {/* Progress bar */}
       {progress != null && (
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-text-tertiary">Progres</span>
-            <span className="text-data font-medium text-text-secondary">
+        <div className="mt-2.5">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-overlay-active">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500 ease-out",
+                  status === "ok" && "bg-emerald-500",
+                  status === "warning" && "bg-amber-500",
+                  status === "ko" && "bg-red-500",
+                  status === "no_data" && "bg-slate-500",
+                )}
+                style={{ width: `${Math.min(progressPct, 100)}%` }}
+              />
+            </div>
+            <span className="text-data text-[11px] font-medium text-text-secondary">
               {progressPct}%
             </span>
-          </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-overlay-active">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500 ease-out",
-                status === "ok" && "bg-emerald-500",
-                status === "warning" && "bg-amber-500",
-                status === "ko" && "bg-red-500",
-                status === "no_data" && "bg-slate-500",
-              )}
-              style={{ width: `${Math.min(progressPct, 100)}%` }}
-            />
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <div className="mt-4 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-text-tertiary">
         <div className="h-1 w-1 rounded-full bg-text-tertiary/50" />
         {kpi.source === "manual" ? "Entrada manual" : kpi.source}
       </div>

@@ -10,6 +10,8 @@ function getAutoTheme(): "light" | "dark" {
 interface AppState {
   selectedYear: number;
   setSelectedYear: (year: number) => void;
+  selectedCompanyId: string | null;
+  setSelectedCompanyId: (id: string | null) => void;
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   theme: Theme;
@@ -20,6 +22,8 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   selectedYear: 2026,
   setSelectedYear: (year) => set({ selectedYear: year }),
+  selectedCompanyId: null,
+  setSelectedCompanyId: (id) => set({ selectedCompanyId: id }),
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   theme: "light",

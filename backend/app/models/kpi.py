@@ -32,6 +32,12 @@ class KPIDefinition(Base):
         ForeignKey("connectors.id", ondelete="SET NULL"), nullable=True
     )
     n8n_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    responsible_team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    responsible_member_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("members.id", ondelete="SET NULL"), nullable=True
+    )
     is_annual_objective: Mapped[bool] = mapped_column(default=False)
     active: Mapped[bool] = mapped_column(default=True)
 
