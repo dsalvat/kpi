@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.kpi import KPIDefinition
 
 
 class Credential(Base):
@@ -18,7 +24,7 @@ class Credential(Base):
     base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     active: Mapped[bool] = mapped_column(default=True)
 
-    connectors: Mapped[list["Connector"]] = relationship(
+    connectors: Mapped[list[Connector]] = relationship(
         back_populates="credential", cascade="all, delete-orphan"
     )
 
@@ -38,5 +44,5 @@ class Connector(Base):
     #   ai_agent: {"system_prompt": "...", "provider": "rovo"}
     active: Mapped[bool] = mapped_column(default=True)
 
-    credential: Mapped["Credential | None"] = relationship(back_populates="connectors")
-    kpis: Mapped[list["KPIDefinition"]] = relationship(back_populates="connector")
+    credential: Mapped[Credential | None] = relationship(back_populates="connectors")
+    kpis: Mapped[list[KPIDefinition]] = relationship(back_populates="connector")

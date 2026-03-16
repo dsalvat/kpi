@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,7 @@ async def ingest_kpi_value(db: AsyncSession, payload: KPIIngestPayload) -> KPIVa
         year=payload.year,
         month=payload.month,
         value=payload.value,
-        collected_at=datetime.now(timezone.utc),
+        collected_at=datetime.now(UTC),
         collection_method="n8n_automatic",
         notes=payload.notes,
     )
@@ -41,7 +41,7 @@ async def ingest_batch(
         workflow_id=workflow_id or "unknown",
         status="success",
         kpis_collected=0,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
 
     success_count = 0
@@ -57,10 +57,10 @@ async def ingest_batch(
             else:
                 errors.append(f"KPI '{payload.kpi_code}' not found")
         except Exception as e:
-            errors.append(f"Error ingesting {payload.kpi_code}: {str(e)}")
+            errors.append(f"Error ingesting {payload.kpi_code}: {e!s}")
 
     log.kpis_collected = success_count
-    log.finished_at = datetime.now(timezone.utc)
+    log.finished_at = datetime.now(UTC)
     if errors:
         log.status = "partial" if success_count > 0 else "error"
         log.error_message = "; ".join(errors)

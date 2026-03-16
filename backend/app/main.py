@@ -1,7 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, budget, connectors, dashboard, ingest, kpis, okrs, organization, projects, value
+from app.routers import (
+    auth,
+    budget,
+    connectors,
+    dashboard,
+    ingest,
+    kpis,
+    okrs,
+    organization,
+    projects,
+    value,
+)
 
 app = FastAPI(title="KPI Platform API", version="0.1.0")
 

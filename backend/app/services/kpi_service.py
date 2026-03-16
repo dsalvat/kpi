@@ -1,15 +1,12 @@
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 
-from sqlalchemy import delete, distinct, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.connector import Connector
 from app.models.kpi import KPIDefinition, KPIValue, KPIYearAssignment
 from app.schemas.kpi import KPIDefinitionCreate, KPIDefinitionUpdate, KPIValueCreate, KPIValueUpdate
 from app.services.calculations import kpi_status, kr_progress
-
 
 GROUP_PREFIX = {
     "serveis": "SRV-",
@@ -244,7 +241,7 @@ async def create_kpi_value(db: AsyncSession, code: str, data: KPIValueCreate) ->
         year=data.year,
         month=data.month,
         value=data.value,
-        collected_at=datetime.now(timezone.utc),
+        collected_at=datetime.now(UTC),
         collection_method="manual",
         notes=data.notes,
     )
@@ -267,7 +264,7 @@ async def update_kpi_value(
         return None
     value.value = data.value
     value.notes = data.notes
-    value.collected_at = datetime.now(timezone.utc)
+    value.collected_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(value)
     return value

@@ -2,7 +2,6 @@ import uuid
 
 from pydantic import BaseModel
 
-
 # ── Company ──
 
 class CompanyRead(BaseModel):

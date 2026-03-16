@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,7 +91,7 @@ async def update_quarterly_data(
         qd.is_manual = True
     if data.notes is not None:
         qd.notes = data.notes
-    qd.updated_at = datetime.now(timezone.utc)
+    qd.updated_at = datetime.now(UTC)
 
     await db.commit()
     await db.refresh(qd)

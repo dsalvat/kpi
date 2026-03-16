@@ -5,12 +5,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.schemas.organization import (
-    CompanyRead, CompanyCreate, CompanyUpdate,
-    DepartmentRead, DepartmentCreate, DepartmentUpdate,
-    AreaRead, AreaCreate, AreaUpdate,
-    TeamRead, TeamCreate, TeamUpdate,
-    MemberRead, MemberCreate, MemberUpdate,
-    MemberSummary, TeamSummary,
+    AreaCreate,
+    AreaRead,
+    AreaUpdate,
+    CompanyCreate,
+    CompanyRead,
+    CompanyUpdate,
+    DepartmentCreate,
+    DepartmentRead,
+    DepartmentUpdate,
+    MemberCreate,
+    MemberRead,
+    MemberSummary,
+    MemberUpdate,
+    TeamCreate,
+    TeamRead,
+    TeamSummary,
+    TeamUpdate,
 )
 from app.services import organization_service as svc
 
@@ -157,7 +168,8 @@ async def delete_member(member_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 async def list_teams_summary(company_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """All teams across all departments/areas for a company, for dropdowns."""
     from sqlalchemy import select
-    from app.models.organization import Team, Area, Department
+
+    from app.models.organization import Area, Department, Team
     stmt = (
         select(Team)
         .join(Area)

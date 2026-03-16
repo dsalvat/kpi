@@ -4,13 +4,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.organization import Company, Department, Area, Team, Member
+from app.models.organization import Area, Company, Department, Member, Team
 from app.schemas.organization import (
-    CompanyCreate, CompanyUpdate,
-    DepartmentCreate, DepartmentUpdate,
-    AreaCreate, AreaUpdate,
-    TeamCreate, TeamUpdate,
-    MemberCreate, MemberUpdate,
+    AreaCreate,
+    AreaUpdate,
+    CompanyCreate,
+    CompanyUpdate,
+    DepartmentCreate,
+    DepartmentUpdate,
+    MemberCreate,
+    MemberUpdate,
+    TeamCreate,
+    TeamUpdate,
 )
 
 

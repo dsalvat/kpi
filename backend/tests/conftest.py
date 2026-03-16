@@ -1,6 +1,9 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.types import JSON
 
 from app.database import Base, get_db
 from app.main import app
@@ -8,6 +11,17 @@ from app.main import app
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 engine_test = create_async_engine(TEST_DATABASE_URL)
+
+# JSONB is PostgreSQL-specific; map it to plain JSON for SQLite tests
+@event.listens_for(engine_test.sync_engine, "connect")
+def _set_sqlite_pragma(dbapi_conn, connection_record):
+    pass  # placeholder for SQLite pragmas if needed
+
+# Replace JSONB columns with JSON for SQLite compatibility
+for table in Base.metadata.tables.values():
+    for column in table.columns:
+        if isinstance(column.type, JSONB):
+            column.type = JSON()
 TestSessionLocal = async_sessionmaker(engine_test, class_=AsyncSession, expire_on_commit=False)
 
 
