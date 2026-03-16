@@ -2,6 +2,8 @@
 
 > Font de veritat per a Claude Code. Llegeix-lo sencer abans de qualsevol canvi.
 > Actualitza'l quan canviï l'arquitectura, les decisions de disseny o les prioritats.
+>
+> **Complementari:** [`PROMPT_CONTRACT.md`](PROMPT_CONTRACT.md) — regles de col·laboració, comunicació i workflow.
 
 ---
 
@@ -449,7 +451,8 @@ kpi/
 │   │   ├── env.py                  ← Alembic async amb asyncpg
 │   │   ├── script.py.mako
 │   │   └── versions/
-│   │       └── 8adb4d20fb77_initial_tables.py
+│   │       ├── 8adb4d20fb77_initial_tables.py
+│   │       └── e74175d68c44_organization_structure.py
 │   ├── scripts/
 │   │   └── seed_from_excel.py      ← Importacio dades Excel (sync, psycopg2)
 │   ├── app/
@@ -460,14 +463,16 @@ kpi/
 │   │   ├── database.py             ← SQLAlchemy async engine + get_db
 │   │   ├── models/
 │   │   │   ├── connector.py        ← Credential, Connector (fonts de dades)
-│   │   │   ├── kpi.py              ← KPIDefinition, KPIValue, KPIYearAssignment
-│   │   │   ├── project.py          ← Project
+│   │   │   ├── kpi.py              ← KPIDefinition, KPIValue, KPIYearAssignment (+responsible_team_id, responsible_member_id)
+│   │   │   ├── organization.py     ← Company, Department, Area, Team, Member (multi-tenant)
+│   │   │   ├── project.py          ← Project (+company_id FK)
 │   │   │   ├── okr.py              ← OKRObjective, OKRKeyResult, OKRQuarterlyData
 │   │   │   ├── value.py            ← ValueItem
 │   │   │   └── sync_log.py         ← N8nSyncLog
 │   │   ├── schemas/
 │   │   │   ├── connector.py        ← Credential/Connector CRUD schemas
 │   │   │   ├── kpi.py              ← KPIDefinitionRead, KPIValueRead, KPIValueCreate
+│   │   │   ├── organization.py     ← Company/Department/Area/Team/Member CRUD schemas (nested reads)
 │   │   │   ├── project.py          ← ProjectRead, ProjectsSummary
 │   │   │   ├── okr.py              ← OKRObjectiveRead, OKRSummaryRead
 │   │   │   ├── value.py            ← ValueSummaryRead
@@ -476,16 +481,19 @@ kpi/
 │   │   │   └── auth.py             ← LoginRequest, TokenResponse
 │   │   ├── routers/
 │   │   │   ├── auth.py             ← POST /auth/login, GET /auth/me
+│   │   │   ├── budget.py           ← CRUD /budget/, /budget/lookups/, /budget/summary/
 │   │   │   ├── connectors.py       ← CRUD /settings/credentials/ i /settings/connectors/
 │   │   │   ├── dashboard.py        ← GET /dashboard/, GET /dashboard/year/{year}
 │   │   │   ├── kpis.py             ← GET/POST /kpis/, /kpis/{code}/values/, /status/
-│   │   │   ├── projects.py         ← GET /projects/, PUT /projects/{code}
+│   │   │   ├── organization.py     ← CRUD /organization/ (companies, departments, areas, teams, members)
+│   │   │   ├── projects.py         ← GET /projects/, POST/PUT/DELETE /projects/{code}
 │   │   │   ├── okrs.py             ← GET /okrs/, PUT /okrs/quarterly/{id}
 │   │   │   ├── value.py            ← GET /value/, GET /value/roi/
 │   │   │   └── ingest.py           ← POST /ingest/kpi-value, /batch, GET /logs
 │   │   └── services/
 │   │       ├── calculations.py     ← Tota la logica de calcul (DRY, 40 tests)
 │   │       ├── connector_service.py ← CRUD credencials i connectors
+│   │       ├── organization_service.py ← CRUD org entities (selectinload per async)
 │   │       ├── kpi_service.py
 │   │       ├── project_service.py
 │   │       ├── okr_service.py
@@ -513,10 +521,12 @@ kpi/
 │   │   │   ├── globals.css         ← CSS custom properties (design system)
 │   │   │   └── tokens.ts           ← Design tokens per Recharts
 │   │   ├── api/client.ts           ← Axios + JWT interceptor
-│   │   ├── store/index.ts          ← Zustand (selectedYear=2026, sidebar)
+│   │   ├── store/index.ts          ← Zustand (selectedYear=2026, sidebar, selectedCompanyId)
 │   │   ├── types/
+│   │   │   ├── budget.ts           ← BudgetItem, BudgetLookup, BudgetSummary
 │   │   │   ├── connector.ts        ← Credential, Connector, SourceType
 │   │   │   ├── kpi.ts
+│   │   │   ├── organization.ts     ← Company, Department, Area, Team, Member (+Create/Update)
 │   │   │   ├── project.ts
 │   │   │   ├── okr.ts
 │   │   │   ├── value.ts
@@ -524,15 +534,18 @@ kpi/
 │   │   ├── hooks/
 │   │   │   ├── useConnectors.ts    ← React Query hooks credencials i connectors
 │   │   │   ├── useDashboard.ts     ← React Query hook dashboard
-│   │   │   └── useKPIs.ts          ← React Query hook KPIs + definition CRUD + years
+│   │   │   ├── useKPIs.ts          ← React Query hook KPIs + definition CRUD + years
+│   │   │   └── useOrganization.ts  ← React Query hooks CRUD companies/depts/areas/teams/members
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx       ← Vista principal
-│   │   │   ├── KPIsServeis.tsx     ← KPIs amb entrada manual
-│   │   │   ├── KPIsProjectes.tsx   ← Placeholder
+│   │   │   ├── KPIsServeis.tsx     ← KPIs serveis amb secció estratègics
+│   │   │   ├── KPIsProjectes.tsx   ← KPIs projectes amb secció estratègics + cartera projectes
 │   │   │   ├── OKRs.tsx            ← Placeholder
 │   │   │   ├── ValorNegoci.tsx     ← Placeholder
 │   │   │   ├── EntradaDades.tsx    ← Entrada manual de valors KPI
 │   │   │   ├── MasterDades.tsx     ← CRUD definicions KPI, grups, anys
+│   │   │   ├── GestioPressupostaria.tsx ← Gestió pressupost amb lookups configurables
+│   │   │   ├── Departament.tsx     ← Estructura org: empresa→dept→àrea→equip→membre
 │   │   │   └── Settings.tsx        ← Gestio connectors i credencials
 │   │   └── components/
 │   │       ├── layout/
@@ -583,6 +596,56 @@ connectors (
   active BOOLEAN DEFAULT TRUE
 )
 
+-- Organization: multi-tenant hierarchy (Company → Department → Area → Team → Member)
+companies (
+  id UUID PK,
+  name VARCHAR(200),
+  slug VARCHAR(50) UNIQUE,
+  active BOOLEAN DEFAULT TRUE
+)
+
+departments (
+  id UUID PK,
+  company_id UUID FK → companies,
+  code VARCHAR(20),
+  name VARCHAR(200),
+  description TEXT NULLABLE,
+  director_id UUID FK → members NULLABLE,
+  active BOOLEAN DEFAULT TRUE
+)
+
+areas (
+  id UUID PK,
+  department_id UUID FK → departments (CASCADE),
+  code VARCHAR(20),
+  name VARCHAR(200),
+  description TEXT NULLABLE,
+  responsable_id UUID FK → members NULLABLE,
+  active BOOLEAN DEFAULT TRUE
+)
+
+teams (
+  id UUID PK,
+  area_id UUID FK → areas (CASCADE),
+  code VARCHAR(20),
+  name VARCHAR(200),
+  description TEXT NULLABLE,
+  coordinador_id UUID FK → members NULLABLE,
+  active BOOLEAN DEFAULT TRUE
+)
+
+members (
+  id UUID PK,
+  company_id UUID FK → companies,
+  team_id UUID FK → teams (CASCADE),
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  email VARCHAR(200),
+  position VARCHAR(200) NULLABLE,
+  role VARCHAR(20),                -- 'director' | 'responsable' | 'coordinador' | 'membre'
+  active BOOLEAN DEFAULT TRUE
+)
+
 -- KPI Definition: catàleg de KPIs
 kpi_definitions (
   id UUID PK,
@@ -598,6 +661,8 @@ kpi_definitions (
   source VARCHAR(50),              -- descriptiu: 'meraki' | 'aruba' | 'sap' | 'itsm' | 'manual'
   source_type VARCHAR(20),         -- 'manual' | 'api_rest' | 'ai_agent'
   connector_id UUID FK → connectors NULLABLE (ON DELETE SET NULL),
+  responsible_team_id UUID FK → teams NULLABLE (ON DELETE SET NULL),
+  responsible_member_id UUID FK → members NULLABLE (ON DELETE SET NULL),
   n8n_workflow_id VARCHAR(100),    -- ID del workflow n8n que col·lecta aquest KPI
   active BOOLEAN DEFAULT TRUE
 )
@@ -623,6 +688,7 @@ kpi_values (
 -- Projects: cartera de projectes IT
 projects (
   id UUID PK,
+  company_id UUID FK → companies NULLABLE (ON DELETE SET NULL),
   code VARCHAR(20) UNIQUE,         -- 'PRJ-01'
   name VARCHAR(200),
   sponsor VARCHAR(100),
@@ -633,7 +699,8 @@ projects (
   budget_eur DECIMAL,
   actual_cost_eur DECIMAL,
   completion_pct INT,
-  sponsor_satisfaction DECIMAL
+  sponsor_satisfaction DECIMAL,
+  is_strategic BOOLEAN DEFAULT FALSE
 )
 
 -- Value Items: Blue/Green Money
@@ -800,6 +867,37 @@ GET   /api/v1/okrs/quarterly-review    → resum per quarter
 GET   /api/v1/value                    → Blue + Green Money (query: year)
 GET   /api/v1/value/roi
 
+GET   /api/v1/organization/companies/                    → llista empreses
+POST  /api/v1/organization/companies/                    → crear empresa
+PUT   /api/v1/organization/companies/{id}                → actualitzar empresa
+GET   /api/v1/organization/companies/{id}/departments/   → departaments amb arbre complet (nested areas>teams>members)
+POST  /api/v1/organization/companies/{id}/departments/   → crear departament
+PUT   /api/v1/organization/departments/{id}              → actualitzar departament
+DELETE /api/v1/organization/departments/{id}             → eliminar departament
+POST  /api/v1/organization/areas/                        → crear àrea
+PUT   /api/v1/organization/areas/{id}                    → actualitzar àrea
+DELETE /api/v1/organization/areas/{id}                   → eliminar àrea
+POST  /api/v1/organization/teams/                        → crear equip
+PUT   /api/v1/organization/teams/{id}                    → actualitzar equip
+DELETE /api/v1/organization/teams/{id}                   → eliminar equip
+GET   /api/v1/organization/companies/{id}/members/       → llista membres (query: team_id)
+GET   /api/v1/organization/companies/{id}/members/summary → membres per dropdowns
+POST  /api/v1/organization/companies/{id}/members/       → crear membre
+PUT   /api/v1/organization/members/{id}                  → actualitzar membre
+DELETE /api/v1/organization/members/{id}                 → eliminar membre
+GET   /api/v1/organization/companies/{id}/teams/summary  → equips per dropdowns
+
+GET   /api/v1/budget/                   → partides pressupost (query: year, include_inactive)
+POST  /api/v1/budget/                   → crear partida
+PUT   /api/v1/budget/{id}/              → actualitzar partida
+DELETE /api/v1/budget/{id}/             → eliminar partida
+GET   /api/v1/budget/summary/           → resum pressupost (query: year)
+GET   /api/v1/budget/years/             → anys disponibles
+GET   /api/v1/budget/lookups/           → lookups configurables (query: category)
+POST  /api/v1/budget/lookups/           → crear lookup
+PUT   /api/v1/budget/lookups/{id}/      → actualitzar lookup
+DELETE /api/v1/budget/lookups/{id}/     → eliminar lookup
+
 GET   /api/v1/workflows                → estat de workflows n8n
 POST  /api/v1/workflows/{id}/trigger   → executar workflow ara
 ```
@@ -893,6 +991,25 @@ docker compose exec backend python -m scripts.seed_from_excel
 - [x] 10 endpoints nous sota /api/v1/settings/
 - [x] Zustand default year canviat a 2026
 
+### Fase 1.6 — Gestió Pressupostària ✅ COMPLETADA
+- [x] Model BudgetItem + BudgetLookup amb Alembic
+- [x] CRUD pressupost amb partides anuals
+- [x] Lookups configurables per categoria (centre_cost, partida, proveidor)
+- [x] Pàgina GestioPressupostaria amb taula editable i resum
+- [x] Integració amb Master de Dades
+
+### Fase 1.7 — Estructura Organitzativa ✅ COMPLETADA
+- [x] **Multi-tenant**: Company com a entitat arrel, company_id a projects i kpi_definitions
+- [x] Jerarquia: Company → Department → Area → Team → Member
+- [x] Rols: director (dept), responsable (àrea), coordinador (equip), membre
+- [x] Supervisió implícita: membre→coordinador→responsable→director (deduït de l'estructura)
+- [x] KPI responsabilitat: responsible_team_id + responsible_member_id a kpi_definitions
+- [x] 5 taules noves: companies, departments, areas, teams, members
+- [x] CRUD complet amb nested reads (dept retorna arbre complet fins a membres)
+- [x] **Pàgina Departament** (`/departament`) — gestió arbre organitzatiu amb inline forms
+- [x] Zustand store: selectedCompanyId persistent
+- [x] SQLAlchemy async: selectinload obligatori per evitar MissingGreenlet en serialització
+
 ### Fase 2 — Connectors n8n
 7. Workflow ITSM (maxim impacte: SRV-03..08, SRV-11, SRV-12)
 8. Workflow Meraki (SRV-01, SRV-02 oficines)
@@ -931,6 +1048,12 @@ docker compose exec backend python -m scripts.seed_from_excel
 | **Redis graceful degradation** | `cache.py` retorna `None` si `REDIS_URL` es buit. El dashboard funciona sense Redis. |
 | **Seed sync (psycopg2)** | El seed script usa SQLAlchemy sync, no async. S'executa una sola vegada via Docker exec. |
 | **MSYS_NO_PATHCONV** | En Git Bash (Windows), cal `MSYS_NO_PATHCONV=1` per evitar conversio de paths `/data/` a `C:/Program Files/Git/data/`. |
+| **Multi-tenant per company_id** | Cada empresa gestiona les seves dades. `company_id` nullable a projects i kpi_definitions per backward compatibility. |
+| **Supervisió implícita** | No hi ha camp `supervisor_id`. La cadena de supervisió es dedueix de l'estructura: membre→team.coordinador→area.responsable→dept.director. |
+| **Una persona, un equip** | Cada membre pertany exactament a un equip (team_id FK). Pot tenir rol director/responsable/coordinador tot i pertànyer a un equip concret. |
+| **Auth independent d'organització** | Els membres es gestionen a l'org tree, però l'auth (JWT) resta independent amb usuaris hardcoded. Vinculació futura. |
+| **selectinload obligatori en async** | SQLAlchemy async no suporta lazy loading. Tots els services que retornen entitats amb relacions han de fer `selectinload()` explícit, o FastAPI falla amb `MissingGreenlet`. |
+| **Projectes estratègics** | `is_strategic` boolean a projects. Mostrats amb icona estrella a la cartera de projectes. |
 
 ---
 
@@ -947,7 +1070,60 @@ docker compose exec backend python -m scripts.seed_from_excel
 
 ---
 
-## 14. Quan Tinguis Dubtes
+## 14. Regles de Col·laboració (Prompt Contract)
+
+> Detall complet a [`PROMPT_CONTRACT.md`](PROMPT_CONTRACT.md).
+
+### 14.1 Comunicació ràpida
+
+| Paraula | Significat |
+|---------|-----------|
+| **SGTM** | Sounds Good To Me — procedeix tal com has dit |
+| **PLAN** | Només vull veure el teu pla, no escriguis codi encara |
+| **YOLO** | Implementa directament sense demanar confirmació |
+| **STOP** | Para, necessito repensar alguna cosa |
+| **RECAP** | Dóna'm un resum de l'estat actual del projecte |
+| **UNDO** | Desfés l'últim canvi |
+
+### 14.2 Convencions de naming
+
+| Element | Convenció | Exemple |
+|---------|-----------|---------|
+| Fitxers TS/React | `PascalCase` (components), `camelCase` (hooks/utils) | `KPICard.tsx`, `useKPIs.ts` |
+| Fitxers Python | `snake_case` | `kpi_service.py` |
+| Variables JS/TS | `camelCase` | `selectedYear` |
+| Variables Python | `snake_case` | `company_id` |
+| Constants | `UPPER_SNAKE_CASE` | `ROLE_CONFIG` |
+| Components React | `PascalCase` | `StatusBadge` |
+| BD (taules/columnes) | `snake_case` | `kpi_definitions` |
+| API endpoints | `/api/v1/recurs/` (trailing slash) | `/api/v1/organization/companies/` |
+| Codis KPI | `[GRUP]-[NUM]` | `SRV-01`, `PRJ-M02` |
+| Idioma UI | **Català** | Labels, títols, textos |
+| Idioma codi | **Anglès** | Variables, funcions, commits |
+
+### 14.3 Regles de codi
+
+- TypeScript estricte (`strict: true`) — sense `any`
+- Python: ruff amb line-length 100, target 3.12
+- Funcions petites (màx. ~30 línies), un component per fitxer
+- Comentaris només quan el "per què" no és obvi
+- Try-catch en operacions async/externes, loading states obligatoris
+- **selectinload obligatori** en SQLAlchemy async per relacions serialitzades
+- No introduir dependències noves sense consultar primer
+
+### 14.4 Anti-patrons de codi
+
+- No eliminar funcionalitat existent en afegir-ne de nova
+- No canviar el stack sense consultar
+- No over-enginyeritzar (YAGNI!)
+- No ignorar errors TypeScript / ruff
+- No fer múltiples canvis no relacionats en la mateixa resposta
+- No assumir que un servei extern està configurat — preguntar
+- No inventar dades d'exemple que semblin reals
+
+---
+
+## 15. Quan Tinguis Dubtes
 
 | Dubte | On trobar la resposta |
 |-------|-----------------------|
@@ -957,3 +1133,4 @@ docker compose exec backend python -m scripts.seed_from_excel
 | Construcció d'un workflow n8n | Demanar directament amb n8n-skills actiu; els skills d'expressió, validació i patrons s'activen sols |
 | Decisió no coberta aquí | Principi de mínima sorpresa. Solució més simple que funcioni. Documentar aquí. |
 | Colors o estil visual | `design-system/MASTER.md` té prioritat absoluta. Si no existeix: secció 3.2. |
+| Regles de col·laboració i comunicació | `PROMPT_CONTRACT.md` — convencions, paraules clau, flux de treball |

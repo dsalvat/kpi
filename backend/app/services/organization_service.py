@@ -14,6 +14,33 @@ from app.schemas.organization import (
 )
 
 
+def _dept_load_options():
+    """Eager-load options for Department with full nested tree."""
+    return [
+        selectinload(Department.director),
+        selectinload(Department.areas).selectinload(Area.responsable),
+        selectinload(Department.areas).selectinload(Area.teams).selectinload(Team.coordinador),
+        selectinload(Department.areas).selectinload(Area.teams).selectinload(Team.members),
+    ]
+
+
+def _area_load_options():
+    """Eager-load options for Area with nested teams/members."""
+    return [
+        selectinload(Area.responsable),
+        selectinload(Area.teams).selectinload(Team.coordinador),
+        selectinload(Area.teams).selectinload(Team.members),
+    ]
+
+
+def _team_load_options():
+    """Eager-load options for Team with members."""
+    return [
+        selectinload(Team.coordinador),
+        selectinload(Team.members),
+    ]
+
+
 # ── Company ──
 
 async def list_companies(db: AsyncSession) -> list[Company]:
@@ -80,8 +107,10 @@ async def create_department(db: AsyncSession, company_id: uuid.UUID, data: Depar
     dept = Department(company_id=company_id, **data.model_dump())
     db.add(dept)
     await db.commit()
-    await db.refresh(dept)
-    return dept
+    # Reload with eager-loaded relationships for serialization
+    stmt = select(Department).where(Department.id == dept.id).options(*_dept_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def update_department(db: AsyncSession, dept_id: uuid.UUID, data: DepartmentUpdate) -> Department | None:
@@ -91,8 +120,9 @@ async def update_department(db: AsyncSession, dept_id: uuid.UUID, data: Departme
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(dept, field, value)
     await db.commit()
-    await db.refresh(dept)
-    return dept
+    stmt = select(Department).where(Department.id == dept_id).options(*_dept_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def delete_department(db: AsyncSession, dept_id: uuid.UUID) -> bool:
@@ -114,8 +144,9 @@ async def create_area(db: AsyncSession, data: AreaCreate) -> Area:
     area = Area(**data.model_dump())
     db.add(area)
     await db.commit()
-    await db.refresh(area)
-    return area
+    stmt = select(Area).where(Area.id == area.id).options(*_area_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def update_area(db: AsyncSession, area_id: uuid.UUID, data: AreaUpdate) -> Area | None:
@@ -125,8 +156,9 @@ async def update_area(db: AsyncSession, area_id: uuid.UUID, data: AreaUpdate) ->
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(area, field, value)
     await db.commit()
-    await db.refresh(area)
-    return area
+    stmt = select(Area).where(Area.id == area_id).options(*_area_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def delete_area(db: AsyncSession, area_id: uuid.UUID) -> bool:
@@ -148,8 +180,9 @@ async def create_team(db: AsyncSession, data: TeamCreate) -> Team:
     team = Team(**data.model_dump())
     db.add(team)
     await db.commit()
-    await db.refresh(team)
-    return team
+    stmt = select(Team).where(Team.id == team.id).options(*_team_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def update_team(db: AsyncSession, team_id: uuid.UUID, data: TeamUpdate) -> Team | None:
@@ -159,8 +192,9 @@ async def update_team(db: AsyncSession, team_id: uuid.UUID, data: TeamUpdate) ->
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(team, field, value)
     await db.commit()
-    await db.refresh(team)
-    return team
+    stmt = select(Team).where(Team.id == team_id).options(*_team_load_options())
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 
 async def delete_team(db: AsyncSession, team_id: uuid.UUID) -> bool:
