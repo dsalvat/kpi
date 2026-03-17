@@ -7,6 +7,7 @@ import type { OKRObjective } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
 import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
 import type { Company, CompanyCreate, Department, DepartmentCreate, Area, AreaCreate, Team, TeamCreate, TeamSummary, Member, MemberCreate, MemberUpdate, MemberSummary } from "@/types/organization";
+import type { ProcessLabel, ProcessLabelCreate, ProcessLabelUpdate, ProcessDocument, ProcessDocumentCreate, ProcessDocumentUpdate, ProcessDocumentSummary } from "@/types/process";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -148,6 +149,8 @@ export const organizationApi = {
     api.post<Company>("/organization/companies/", data),
   updateCompany: (id: string, data: Partial<Company>) =>
     api.put<Company>(`/organization/companies/${id}`, data),
+  deleteCompany: (id: string) =>
+    api.delete(`/organization/companies/${id}`),
 
   // Departments
   listDepartments: (companyId: string) =>
@@ -188,6 +191,32 @@ export const organizationApi = {
     api.put<Member>(`/organization/members/${id}`, data),
   deleteMember: (id: string) =>
     api.delete(`/organization/members/${id}`),
+};
+
+export const processApi = {
+  // Labels
+  listLabels: (companyId: string) =>
+    api.get<ProcessLabel[]>(`/processes/companies/${companyId}/labels/`),
+  createLabel: (companyId: string, data: ProcessLabelCreate) =>
+    api.post<ProcessLabel>(`/processes/companies/${companyId}/labels/`, data),
+  updateLabel: (labelId: string, data: ProcessLabelUpdate) =>
+    api.put<ProcessLabel>(`/processes/labels/${labelId}`, data),
+  deleteLabel: (labelId: string) =>
+    api.delete(`/processes/labels/${labelId}`),
+
+  // Documents
+  listDocuments: (companyId: string, labelId?: string) =>
+    api.get<ProcessDocumentSummary[]>(`/processes/companies/${companyId}/documents/`, {
+      params: labelId ? { label_id: labelId } : undefined,
+    }),
+  getDocument: (documentId: string) =>
+    api.get<ProcessDocument>(`/processes/documents/${documentId}`),
+  createDocument: (companyId: string, data: ProcessDocumentCreate) =>
+    api.post<ProcessDocument>(`/processes/companies/${companyId}/documents/`, data),
+  updateDocument: (documentId: string, data: ProcessDocumentUpdate) =>
+    api.put<ProcessDocument>(`/processes/documents/${documentId}`, data),
+  deleteDocument: (documentId: string) =>
+    api.delete(`/processes/documents/${documentId}`),
 };
 
 export default api;

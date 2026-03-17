@@ -10,6 +10,7 @@ from app.routers import (
     kpis,
     okrs,
     organization,
+    processes,
     projects,
     value,
 )
@@ -34,6 +35,7 @@ app.include_router(value.router)
 app.include_router(connectors.router)
 app.include_router(budget.router)
 app.include_router(organization.router)
+app.include_router(processes.router)
 
 
 @app.get("/health")

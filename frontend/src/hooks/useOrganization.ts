@@ -27,6 +27,23 @@ export function useCreateCompany() {
   });
 }
 
+export function useUpdateCompany() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CompanyCreate> }) =>
+      organizationApi.updateCompany(id, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
+  });
+}
+
+export function useDeleteCompany() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => organizationApi.deleteCompany(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
+  });
+}
+
 // ── Departments (includes nested areas > teams > members) ──
 
 export function useDepartments(companyId: string | undefined) {

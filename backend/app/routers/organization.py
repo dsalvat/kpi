@@ -51,6 +51,12 @@ async def update_company(company_id: uuid.UUID, data: CompanyUpdate, db: AsyncSe
     return result
 
 
+@router.delete("/companies/{company_id}", status_code=204)
+async def delete_company(company_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    if not await svc.delete_company(db, company_id):
+        raise HTTPException(404, "Company not found")
+
+
 # ══════════ Departments ══════════
 
 @router.get("/companies/{company_id}/departments/", response_model=list[DepartmentRead])

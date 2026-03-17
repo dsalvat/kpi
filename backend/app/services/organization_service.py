@@ -81,6 +81,15 @@ async def update_company(db: AsyncSession, company_id: uuid.UUID, data: CompanyU
     return company
 
 
+async def delete_company(db: AsyncSession, company_id: uuid.UUID) -> bool:
+    company = await get_company(db, company_id)
+    if not company:
+        return False
+    await db.delete(company)
+    await db.commit()
+    return True
+
+
 # ── Department ──
 
 async def list_departments(db: AsyncSession, company_id: uuid.UUID) -> list[Department]:

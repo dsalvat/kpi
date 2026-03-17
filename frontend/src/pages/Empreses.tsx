@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   useCompanies,
   useCreateCompany,
+  useUpdateCompany,
+  useDeleteCompany,
   useDepartments,
   useCreateDepartment,
   useDeleteDepartment,
@@ -17,6 +19,7 @@ import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
 import type {
+  Company,
   Department,
   Area,
   Team,
@@ -35,7 +38,23 @@ import {
   Star,
   Mail,
   Briefcase,
+  Pencil,
+  Check,
+  Globe,
 } from "lucide-react";
+
+/* ════════════════════════════════════════════════════════════ */
+/*  Helpers                                                    */
+/* ════════════════════════════════════════════════════════════ */
+
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove accents
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 const ROLE_CONFIG: Record<string, { label: string; icon: typeof Users; color: string }> = {
   director: { label: "Director", icon: Crown, color: "text-amber-600 bg-amber-500/10" },
@@ -44,10 +63,16 @@ const ROLE_CONFIG: Record<string, { label: string; icon: typeof Users; color: st
   membre: { label: "Membre", icon: UserCircle, color: "text-text-secondary bg-overlay-hover" },
 };
 
-export default function Departament() {
+/* ════════════════════════════════════════════════════════════ */
+/*  Main page                                                  */
+/* ════════════════════════════════════════════════════════════ */
+
+export default function Empreses() {
   const { selectedCompanyId, setSelectedCompanyId } = useAppStore();
   const { data: companies, isLoading: loadingCompanies } = useCompanies();
   const createCompany = useCreateCompany();
+  const updateCompany = useUpdateCompany();
+  const deleteCompany = useDeleteCompany();
 
   // Auto-select first company
   useEffect(() => {
@@ -56,12 +81,19 @@ export default function Departament() {
     }
   }, [companies, selectedCompanyId, setSelectedCompanyId]);
 
+  // Clear selection if company was deleted
+  useEffect(() => {
+    if (selectedCompanyId && companies && !companies.find((c) => c.id === selectedCompanyId)) {
+      setSelectedCompanyId(companies.length > 0 ? companies[0]!.id : null);
+    }
+  }, [companies, selectedCompanyId, setSelectedCompanyId]);
+
   const { data: departments, isLoading: loadingDepts } = useDepartments(
     selectedCompanyId ?? undefined,
   );
 
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [newCompany, setNewCompany] = useState({ name: "", slug: "" });
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const isLoading = loadingCompanies || loadingDepts;
 
@@ -70,134 +102,323 @@ export default function Departament() {
       {/* Header */}
       <div className="animate-fade-in">
         <h1 className="text-display text-[28px] font-bold text-text-primary">
-          Departament
+          Empreses
         </h1>
         <p className="mt-1 text-[13px] text-text-tertiary">
-          Estructura organitzativa: empreses, departaments, arees, equips i
-          membres
+          Gestio d'empreses i estructura organitzativa
         </p>
       </div>
 
-      {/* Company selector */}
-      <div
-        className="animate-fade-in-up flex flex-wrap items-center gap-3"
-        style={{ animationDelay: "0.03s" }}
-      >
-        <label className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
-          Empresa
-        </label>
-        {loadingCompanies ? (
-          <div className="h-9 w-48 animate-shimmer rounded-lg" />
-        ) : companies && companies.length > 0 ? (
-          <select
-            value={selectedCompanyId ?? ""}
-            onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-            className="rounded-xl border border-border bg-surface px-3 py-2 text-[13px] font-medium text-text-primary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
+      {/* Company section */}
+      <section className="animate-fade-in-up space-y-3" style={{ animationDelay: "0.03s" }}>
+        <div className="flex items-center justify-between">
+          <SectionHeader title="Empreses" icon={Globe} count={companies?.length} />
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-secondary/90"
           >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Nova empresa
+          </button>
+        </div>
+
+        {/* Create form */}
+        {showCreateForm && (
+          <CompanyCreateForm
+            existingSlugs={(companies ?? []).map((c) => c.slug)}
+            onSubmit={(data) => {
+              createCompany.mutate(data, {
+                onSuccess: (company) => {
+                  setSelectedCompanyId(company.id);
+                  setShowCreateForm(false);
+                },
+              });
+            }}
+            onCancel={() => setShowCreateForm(false)}
+            isLoading={createCompany.isPending}
+          />
+        )}
+
+        {/* Company list */}
+        {loadingCompanies ? (
+          <div className="space-y-2">
+            <SkeletonCard />
+          </div>
+        ) : companies && companies.length > 0 ? (
+          <div className="space-y-2">
+            {companies.map((company) => (
+              <CompanyCard
+                key={company.id}
+                company={company}
+                isSelected={company.id === selectedCompanyId}
+                isEditing={editingId === company.id}
+                existingSlugs={(companies ?? []).filter((c) => c.id !== company.id).map((c) => c.slug)}
+                onSelect={() => setSelectedCompanyId(company.id)}
+                onEditStart={() => setEditingId(company.id)}
+                onEditEnd={() => setEditingId(null)}
+                onUpdate={(data) => {
+                  updateCompany.mutate(
+                    { id: company.id, data },
+                    { onSuccess: () => setEditingId(null) },
+                  );
+                }}
+                onDelete={() => {
+                  if (confirm(`Eliminar empresa "${company.name}"? Tots els departaments, arees, equips i membres s'eliminaran.`)) {
+                    deleteCompany.mutate(company.id);
+                  }
+                }}
+                isUpdating={updateCompany.isPending}
+              />
             ))}
-          </select>
+          </div>
+        ) : !showCreateForm ? (
+          <EmptyState
+            title="Sense empreses"
+            description="Crea la primera empresa per gestionar l'estructura organitzativa."
+          />
         ) : null}
-        <button
-          onClick={() => setShowCompanyForm(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-secondary/90"
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-          Nova empresa
-        </button>
-      </div>
-
-      {/* New company form */}
-      {showCompanyForm && (
-        <div className="card animate-fade-in-up p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-display text-[15px] font-semibold text-text-primary">
-              Nova empresa
-            </h3>
-            <button
-              onClick={() => setShowCompanyForm(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-overlay-hover"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
-                Nom
-              </label>
-              <input
-                className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
-                placeholder="Nom de l'empresa"
-                value={newCompany.name}
-                onChange={(e) =>
-                  setNewCompany((p) => ({ ...p, name: e.target.value }))
-                }
-              />
-            </div>
-            <div className="w-40">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
-                Slug
-              </label>
-              <input
-                className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
-                placeholder="empresa-slug"
-                value={newCompany.slug}
-                onChange={(e) =>
-                  setNewCompany((p) => ({
-                    ...p,
-                    slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-                  }))
-                }
-              />
-            </div>
-            <button
-              onClick={() => {
-                if (newCompany.name && newCompany.slug) {
-                  createCompany.mutate(newCompany, {
-                    onSuccess: (company) => {
-                      setSelectedCompanyId(company.id);
-                      setShowCompanyForm(false);
-                      setNewCompany({ name: "", slug: "" });
-                    },
-                  });
-                }
-              }}
-              disabled={!newCompany.name || !newCompany.slug}
-              className="rounded-xl bg-secondary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-secondary/90 disabled:opacity-50"
-            >
-              Crear
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="space-y-4">
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      )}
-
-      {/* Empty — no company */}
-      {!isLoading && (!companies || companies.length === 0) && !showCompanyForm && (
-        <EmptyState
-          title="Sense empreses"
-          description="Crea la primera empresa per gestionar l'estructura organitzativa."
-        />
-      )}
+      </section>
 
       {/* Department tree */}
-      {!isLoading && selectedCompanyId && departments && (
+      {selectedCompanyId && (
         <DepartmentTree
           companyId={selectedCompanyId}
-          departments={departments}
+          departments={departments ?? []}
+          isLoading={isLoading}
         />
       )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/*  Company components                                         */
+/* ════════════════════════════════════════════════════════════ */
+
+function CompanyCreateForm({
+  existingSlugs,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: {
+  existingSlugs: string[];
+  onSubmit: (data: { name: string; slug: string }) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugManual, setSlugManual] = useState(false);
+
+  const autoSlug = useMemo(() => toSlug(name), [name]);
+  const effectiveSlug = slugManual ? slug : autoSlug;
+  const slugExists = existingSlugs.includes(effectiveSlug);
+  const canSubmit = name.trim() && effectiveSlug && !slugExists;
+
+  return (
+    <div className="card animate-fade-in-up p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-display text-[15px] font-semibold text-text-primary">
+          Nova empresa
+        </h3>
+        <button
+          onClick={onCancel}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-overlay-hover"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Nom
+          </label>
+          <input
+            autoFocus
+            autoComplete="off"
+            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
+            placeholder="Nom de l'empresa"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="w-52">
+          <label className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            Slug
+            {!slugManual && name && (
+              <span className="normal-case tracking-normal text-text-tertiary/60">(auto)</span>
+            )}
+          </label>
+          <input
+            autoComplete="off"
+            className={cn(
+              "w-full rounded-lg border bg-bg px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-secondary/20",
+              slugExists ? "border-red-400 focus:border-red-400" : "border-border focus:border-secondary",
+            )}
+            placeholder="empresa-slug"
+            value={effectiveSlug}
+            onChange={(e) => {
+              setSlugManual(true);
+              setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
+            }}
+            onFocus={() => {
+              if (!slugManual) {
+                setSlug(autoSlug);
+                setSlugManual(true);
+              }
+            }}
+          />
+          {slugExists && (
+            <p className="mt-0.5 text-[11px] text-red-500">Slug ja existeix</p>
+          )}
+        </div>
+        <button
+          onClick={() => canSubmit && onSubmit({ name: name.trim(), slug: effectiveSlug })}
+          disabled={!canSubmit || isLoading}
+          className="rounded-xl bg-secondary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-secondary/90 disabled:opacity-50"
+        >
+          {isLoading ? "..." : "Crear"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CompanyCard({
+  company,
+  isSelected,
+  isEditing,
+  existingSlugs,
+  onSelect,
+  onEditStart,
+  onEditEnd,
+  onUpdate,
+  onDelete,
+  isUpdating,
+}: {
+  company: Company;
+  isSelected: boolean;
+  isEditing: boolean;
+  existingSlugs: string[];
+  onSelect: () => void;
+  onEditStart: () => void;
+  onEditEnd: () => void;
+  onUpdate: (data: { name?: string; slug?: string }) => void;
+  onDelete: () => void;
+  isUpdating: boolean;
+}) {
+  const [editName, setEditName] = useState(company.name);
+  const [editSlug, setEditSlug] = useState(company.slug);
+
+  const slugExists = editSlug !== company.slug && existingSlugs.includes(editSlug);
+  const canSave = editName.trim() && editSlug && !slugExists && (editName !== company.name || editSlug !== company.slug);
+
+  if (isEditing) {
+    return (
+      <div className="card animate-fade-in border-secondary/30 p-4">
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+              Nom
+            </label>
+            <input
+              autoFocus
+              autoComplete="off"
+              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text-primary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSave) onUpdate({ name: editName.trim(), slug: editSlug });
+                if (e.key === "Escape") onEditEnd();
+              }}
+            />
+          </div>
+          <div className="w-52">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+              Slug
+            </label>
+            <input
+              autoComplete="off"
+              className={cn(
+                "w-full rounded-lg border bg-bg px-3 py-2 text-[13px] text-text-primary focus:outline-none focus:ring-1 focus:ring-secondary/20",
+                slugExists ? "border-red-400 focus:border-red-400" : "border-border focus:border-secondary",
+              )}
+              value={editSlug}
+              onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSave) onUpdate({ name: editName.trim(), slug: editSlug });
+                if (e.key === "Escape") onEditEnd();
+              }}
+            />
+            {slugExists && (
+              <p className="mt-0.5 text-[11px] text-red-500">Slug ja existeix</p>
+            )}
+          </div>
+          <button
+            onClick={() => canSave && onUpdate({ name: editName.trim(), slug: editSlug })}
+            disabled={!canSave || isUpdating}
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" strokeWidth={2} />
+          </button>
+          <button
+            onClick={onEditEnd}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-text-tertiary hover:bg-overlay-hover"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onSelect}
+      className={cn(
+        "card flex cursor-pointer items-center gap-3 px-4 py-3 transition-all hover:border-secondary/30",
+        isSelected && "border-secondary/40 bg-secondary/3 ring-1 ring-secondary/10",
+      )}
+    >
+      <div className={cn(
+        "flex h-9 w-9 items-center justify-center rounded-lg",
+        isSelected ? "bg-secondary/12" : "bg-overlay-hover",
+      )}>
+        <Building2 className={cn("h-4.5 w-4.5", isSelected ? "text-secondary" : "text-text-tertiary")} strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn("text-[14px] font-semibold", isSelected ? "text-text-primary" : "text-text-secondary")}>
+          {company.name}
+        </p>
+        <p className="text-[11px] text-text-tertiary font-mono">{company.slug}</p>
+      </div>
+      {isSelected && (
+        <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-semibold text-secondary uppercase tracking-wider">
+          Seleccionada
+        </span>
+      )}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditName(company.name);
+          setEditSlug(company.slug);
+          onEditStart();
+        }}
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-secondary/8 hover:text-secondary"
+        title="Editar empresa"
+      >
+        <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-500/10 hover:text-red-500"
+        title="Eliminar empresa"
+      >
+        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </button>
     </div>
   );
 }
@@ -209,13 +430,24 @@ export default function Departament() {
 function DepartmentTree({
   companyId,
   departments,
+  isLoading: parentLoading,
 }: {
   companyId: string;
   departments: Department[];
+  isLoading: boolean;
 }) {
   const createDept = useCreateDepartment();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", code: "" });
+
+  if (parentLoading) {
+    return (
+      <div className="space-y-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-4">
@@ -260,12 +492,17 @@ function DepartmentTree({
                     setShowForm(false);
                     setForm({ name: "", code: "" });
                   },
+                  onError: (err) => {
+                    console.error("Create department failed:", err);
+                    alert(`Error creant departament: ${err instanceof Error ? err.message : String(err)}`);
+                  },
                 },
               );
             }
           }}
           onCancel={() => setShowForm(false)}
           isLoading={createDept.isPending}
+          submitDisabled={!form.code || !form.name}
         />
       )}
 
@@ -393,6 +630,7 @@ function DepartmentCard({
               }}
               onCancel={() => setShowAreaForm(false)}
               isLoading={createArea.isPending}
+              submitDisabled={!areaForm.code || !areaForm.name}
             />
           )}
 
@@ -502,6 +740,7 @@ function AreaCard({ area, companyId }: { area: Area; companyId: string }) {
               }}
               onCancel={() => setShowTeamForm(false)}
               isLoading={createTeam.isPending}
+              submitDisabled={!teamForm.code || !teamForm.name}
             />
           )}
 
@@ -590,6 +829,7 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
             <div className="mb-3 rounded-lg border border-border bg-bg p-3">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <input
+                  autoComplete="off"
                   className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none"
                   placeholder="Nom"
                   value={memberForm.first_name}
@@ -598,6 +838,7 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
                   }
                 />
                 <input
+                  autoComplete="off"
                   className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none"
                   placeholder="Cognom"
                   value={memberForm.last_name}
@@ -606,6 +847,7 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
                   }
                 />
                 <input
+                  autoComplete="off"
                   className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none"
                   placeholder="Email"
                   value={memberForm.email}
@@ -628,6 +870,7 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <input
+                  autoComplete="off"
                   className="flex-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none"
                   placeholder="Carrec (opcional)"
                   value={memberForm.position}
@@ -817,11 +1060,13 @@ function InlineForm({
   onSubmit,
   onCancel,
   isLoading,
+  submitDisabled,
 }: {
   fields: FormField[];
   onSubmit: () => void;
   onCancel: () => void;
   isLoading: boolean;
+  submitDisabled?: boolean;
 }) {
   return (
     <div className="mb-3 flex items-end gap-2 rounded-lg border border-border bg-bg p-3">
@@ -831,7 +1076,11 @@ function InlineForm({
             {f.label}
           </label>
           <input
-            className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none"
+            autoComplete="off"
+            className={cn(
+              "w-full rounded-lg border bg-surface px-2.5 py-1.5 text-[12px] text-text-primary placeholder:text-text-tertiary focus:border-secondary focus:outline-none",
+              !f.value && submitDisabled !== undefined ? "border-red-300" : "border-border",
+            )}
             placeholder={f.placeholder}
             value={f.value}
             onChange={(e) => f.onChange(e.target.value)}
@@ -840,7 +1089,7 @@ function InlineForm({
       ))}
       <button
         onClick={onSubmit}
-        disabled={isLoading}
+        disabled={isLoading || submitDisabled}
         className="rounded-lg bg-secondary px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-secondary/90 disabled:opacity-50"
       >
         {isLoading ? "..." : "Crear"}
