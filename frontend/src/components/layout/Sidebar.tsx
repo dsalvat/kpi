@@ -14,6 +14,7 @@ import {
   Wallet,
   Building2,
   FileText,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store";
@@ -37,6 +38,7 @@ const navGroups: NavGroup[] = [
       { path: "/", label: "Dashboard", icon: LayoutDashboard },
       { path: "/kpis-serveis", label: "KPIs Serveis", icon: Monitor },
       { path: "/kpis-projectes", label: "KPIs Projectes", icon: FolderKanban },
+      { path: "/seguiment-objectius", label: "Seguiment Objectius", icon: ClipboardCheck },
       { path: "/okrs", label: "OKRs", icon: Target },
       { path: "/valor-negoci", label: "Valor Negoci", icon: TrendingUp },
     ],

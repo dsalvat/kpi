@@ -8,6 +8,7 @@ import type { ValueSummary, ROI } from "@/types/value";
 import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
 import type { Company, CompanyCreate, Department, DepartmentCreate, Area, AreaCreate, Team, TeamCreate, TeamSummary, Member, MemberCreate, MemberUpdate, MemberSummary } from "@/types/organization";
 import type { ProcessLabel, ProcessLabelCreate, ProcessLabelUpdate, ProcessDocument, ProcessDocumentCreate, ProcessDocumentUpdate, ProcessDocumentSummary } from "@/types/process";
+import type { ScorecardTreeNode, IndicatorValueCreate, IndicatorValue } from "@/types/scorecard";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -217,6 +218,15 @@ export const processApi = {
     api.put<ProcessDocument>(`/processes/documents/${documentId}`, data),
   deleteDocument: (documentId: string) =>
     api.delete(`/processes/documents/${documentId}`),
+};
+
+export const scorecardApi = {
+  getTree: (companyId: string, year: number) =>
+    api.get<ScorecardTreeNode[]>("/scorecards/tree/", { params: { company_id: companyId, year } }),
+  addValue: (indicatorId: string, data: IndicatorValueCreate) =>
+    api.post<IndicatorValue>(`/scorecards/indicators/${indicatorId}/values/`, data),
+  updateValue: (valueId: string, data: Partial<IndicatorValueCreate>) =>
+    api.put<IndicatorValue>(`/scorecards/values/${valueId}`, data),
 };
 
 export default api;

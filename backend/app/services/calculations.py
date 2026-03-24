@@ -70,3 +70,63 @@ def global_roi(
     if not total_investment:
         return None
     return (blue_total + green_total - total_investment) / total_investment
+
+
+# ══════════════════════════════════════════════════════════
+# Scorecard calculations
+# ══════════════════════════════════════════════════════════
+
+
+def indicator_progress(
+    value: float | None,
+    target: float,
+    direction: str,
+    indicator_type: str,
+) -> float | None:
+    """Progress of a single scorecard indicator.
+
+    - continuous/count: same as kr_progress (capped at 1.0)
+    - binary: linear progress value/target (0.0 to 1.0)
+    """
+    if value is None or target == 0:
+        return None
+    if indicator_type == "binary":
+        return min(1.0, value / target)
+    return kr_progress(value, target, direction)
+
+
+def category_score(
+    indicators: list[dict],
+) -> float | None:
+    """Weighted average score for a category (operational or management).
+
+    Each indicator dict must have 'progress' (float|None) and 'weight_pct' (float).
+    Indicators with progress=None are excluded; their weight is redistributed.
+    """
+    with_data = [(i["progress"], i["weight_pct"]) for i in indicators if i["progress"] is not None]
+    if not with_data:
+        return None
+    total_weight = sum(w for _, w in with_data)
+    if total_weight == 0:
+        return None
+    return sum(p * w for p, w in with_data) / total_weight
+
+
+def scorecard_score(
+    operational: float | None,
+    management: float | None,
+    op_weight: float = 50.0,
+    mgmt_weight: float = 50.0,
+) -> float | None:
+    """Overall scorecard score from operational + management categories."""
+    scores = []
+    if operational is not None:
+        scores.append((operational, op_weight))
+    if management is not None:
+        scores.append((management, mgmt_weight))
+    if not scores:
+        return None
+    total_weight = sum(w for _, w in scores)
+    if total_weight == 0:
+        return None
+    return sum(s * w for s, w in scores) / total_weight

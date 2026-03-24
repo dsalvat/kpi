@@ -13,6 +13,7 @@ import Settings from "@/pages/Settings";
 import GestioPressupostaria from "@/pages/GestioPressupostaria";
 import Empreses from "@/pages/Empreses";
 import Processos from "@/pages/Processos";
+import SeguimentObjectius from "@/pages/SeguimentObjectius";
 
 export default function App() {
   useThemeEffect();
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/pressupost" element={<GestioPressupostaria />} />
           <Route path="/empreses" element={<Empreses />} />
           <Route path="/processos" element={<Processos />} />
+          <Route path="/seguiment-objectius" element={<SeguimentObjectius />} />
           <Route path="/configuracio" element={<Settings />} />
         </Route>
       </Routes>

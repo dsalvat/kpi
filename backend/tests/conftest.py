@@ -28,6 +28,7 @@ TestSessionLocal = async_sessionmaker(engine_test, class_=AsyncSession, expire_o
 @pytest.fixture(autouse=True)
 async def setup_db():
     async with engine_test.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine_test.begin() as conn:
