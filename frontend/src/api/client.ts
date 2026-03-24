@@ -220,6 +220,21 @@ export const processApi = {
     api.delete(`/processes/documents/${documentId}`),
 };
 
+export interface IndicatorUpdateData {
+  name?: string;
+  description?: string;
+  category?: string;
+  indicator_type?: string;
+  target_value?: number;
+  unit?: string;
+  weight_pct?: number;
+  direction?: string;
+  frequency?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  source?: string | null;
+}
+
 export const scorecardApi = {
   getTree: (companyId: string, year: number) =>
     api.get<ScorecardTreeNode[]>("/scorecards/tree/", { params: { company_id: companyId, year } }),
@@ -227,6 +242,8 @@ export const scorecardApi = {
     api.post<IndicatorValue>(`/scorecards/indicators/${indicatorId}/values/`, data),
   updateValue: (valueId: string, data: Partial<IndicatorValueCreate>) =>
     api.put<IndicatorValue>(`/scorecards/values/${valueId}`, data),
+  updateIndicator: (indicatorId: string, data: IndicatorUpdateData) =>
+    api.put(`/scorecards/indicators/${indicatorId}`, data),
 };
 
 export default api;

@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text,
+    Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -59,7 +59,9 @@ class ScorecardIndicator(Base):
     )  # higher_better | lower_better
     frequency: Mapped[str] = mapped_column(
         String(15), default="monthly"
-    )  # monthly | quarterly | annual
+    )  # weekly | monthly | quarterly | annual
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     kpi_definition_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -52,6 +52,8 @@ class ScorecardIndicatorCreate(BaseModel):
     weight_pct: float = 16.67
     direction: str = "higher_better"
     frequency: str = "monthly"
+    start_date: date | None = None
+    end_date: date | None = None
     source: str | None = None
     source_config: dict | None = None
     kpi_definition_id: uuid.UUID | None = None
@@ -71,6 +73,8 @@ class ScorecardIndicatorUpdate(BaseModel):
     weight_pct: float | None = None
     direction: str | None = None
     frequency: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     source: str | None = None
     source_config: dict | None = None
     kpi_definition_id: uuid.UUID | None = None
@@ -94,6 +98,8 @@ class ScorecardIndicatorRead(BaseModel):
     weight_pct: float
     direction: str
     frequency: str
+    start_date: date | None = None
+    end_date: date | None = None
     source: str | None = None
     source_config: dict | None = None
     kpi_definition_id: uuid.UUID | None = None

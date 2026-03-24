@@ -12,9 +12,11 @@ import {
   ClipboardList,
   Save,
   X,
+  Settings2,
 } from "lucide-react";
 import { useAppStore } from "@/store";
-import { useScorecardTree, useAddIndicatorValue } from "@/hooks/useScorecards";
+import { useScorecardTree, useAddIndicatorValue, useUpdateIndicator } from "@/hooks/useScorecards";
+import { useCompanies } from "@/hooks/useOrganization";
 import type { ScorecardTreeNode, ScorecardIndicator } from "@/types/scorecard";
 
 /* ════════════════════════════════════════════════════════════ */
@@ -88,8 +90,151 @@ function ProgressBar({ value, className = "" }: { value: number | null; classNam
 /*  INDICATOR ROW                                               */
 /* ════════════════════════════════════════════════════════════ */
 
+const FREQUENCY_OPTIONS = [
+  { value: "weekly", label: "Setmanal" },
+  { value: "monthly", label: "Mensual" },
+  { value: "quarterly", label: "Trimestral" },
+  { value: "annual", label: "Anual" },
+];
+
+const DIRECTION_OPTIONS = [
+  { value: "higher_better", label: "Més alt = millor" },
+  { value: "lower_better", label: "Més baix = millor" },
+];
+
+const TYPE_OPTIONS = [
+  { value: "continuous", label: "Continu" },
+  { value: "binary", label: "Binari (Sí/No)" },
+  { value: "count", label: "Recompte" },
+];
+
+function IndicatorConfigPanel({ indicator }: { indicator: ScorecardIndicator }) {
+  const updateIndicator = useUpdateIndicator();
+  const [form, setForm] = useState({
+    name: indicator.name,
+    target_value: String(indicator.target_value),
+    unit: indicator.unit,
+    weight_pct: String(indicator.weight_pct),
+    frequency: indicator.frequency,
+    direction: indicator.direction,
+    indicator_type: indicator.indicator_type,
+    source: indicator.source ?? "",
+    start_date: indicator.start_date ?? "",
+    end_date: indicator.end_date ?? "",
+    description: indicator.description ?? "",
+  });
+
+  const handleSave = () => {
+    updateIndicator.mutate({
+      indicatorId: indicator.id,
+      data: {
+        name: form.name,
+        target_value: parseFloat(form.target_value),
+        unit: form.unit,
+        weight_pct: parseFloat(form.weight_pct),
+        frequency: form.frequency,
+        direction: form.direction,
+        indicator_type: form.indicator_type,
+        source: form.source || null,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        description: form.description || undefined,
+      },
+    });
+  };
+
+  const inputCls = "h-8 rounded-md border border-border bg-bg px-2 text-[13px] focus:border-secondary focus:outline-none";
+  const labelCls = "mb-1 block text-[11px] font-medium text-text-secondary";
+
+  return (
+    <div className="ml-16 mr-4 mb-2 rounded-lg border border-amber-200 bg-amber-50/30 p-3">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+        Configuració indicador
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-4">
+        <div className="col-span-2">
+          <label className={labelCls}>Nom</label>
+          <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Target</label>
+          <input type="number" step="0.01" value={form.target_value}
+            onChange={(e) => setForm({ ...form, target_value: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Unitat</label>
+          <input type="text" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Pes (%)</label>
+          <input type="number" step="0.01" value={form.weight_pct}
+            onChange={(e) => setForm({ ...form, weight_pct: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Freqüència</label>
+          <select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as ScorecardIndicator["frequency"] })}
+            className={`${inputCls} w-full`}>
+            {FREQUENCY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Direcció</label>
+          <select value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value as ScorecardIndicator["direction"] })}
+            className={`${inputCls} w-full`}>
+            {DIRECTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Tipus</label>
+          <select value={form.indicator_type} onChange={(e) => setForm({ ...form, indicator_type: e.target.value as ScorecardIndicator["indicator_type"] })}
+            className={`${inputCls} w-full`}>
+            {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Data inici</label>
+          <input type="date" value={form.start_date}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Data fi</label>
+          <input type="date" value={form.end_date}
+            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+            className={`${inputCls} w-full`} />
+        </div>
+        <div>
+          <label className={labelCls}>Font</label>
+          <input type="text" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}
+            className={`${inputCls} w-full`} placeholder="jira, manual..." />
+        </div>
+        <div className="col-span-2 md:col-span-4">
+          <label className={labelCls}>Descripció</label>
+          <input type="text" value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className={`${inputCls} w-full`} placeholder="Detall de l'indicador..." />
+        </div>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={updateIndicator.isPending}
+          className="flex h-8 items-center gap-1.5 rounded-md bg-amber-600 px-4 text-[12px] font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+        >
+          <Save className="h-3 w-3" /> Desar configuració
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year: number }) {
   const [showForm, setShowForm] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const [formValue, setFormValue] = useState("");
   const [actionsDone, setActionsDone] = useState("");
   const [actionsNext, setActionsNext] = useState("");
@@ -97,19 +242,22 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
 
   const handleSubmit = () => {
     const numValue = parseFloat(formValue);
-    if (isNaN(numValue)) return;
+    if (Number.isNaN(numValue)) return;
 
-    const periodType = indicator.frequency;
+    const periodType = indicator.frequency === "weekly" ? "weekly" : indicator.frequency;
     const now = new Date();
     let period = 0;
-    if (periodType === "monthly") period = now.getMonth() + 1;
+    if (periodType === "weekly") {
+      const start = new Date(now.getFullYear(), 0, 1);
+      period = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
+    } else if (periodType === "monthly") period = now.getMonth() + 1;
     else if (periodType === "quarterly") period = Math.ceil((now.getMonth() + 1) / 3);
 
     addValue.mutate({
       indicatorId: indicator.id,
       data: {
         year,
-        period_type: periodType,
+        period_type: periodType as "monthly" | "quarterly" | "annual",
         period,
         value: numValue,
         actions_done: actionsDone || undefined,
@@ -129,6 +277,8 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
     ? indicator.values[indicator.values.length - 1]
     : null;
 
+  const freqLabel = FREQUENCY_OPTIONS.find((f) => f.value === indicator.frequency)?.label ?? indicator.frequency;
+
   return (
     <div className="group">
       <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-bg/60">
@@ -137,7 +287,7 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
           {indicator.weight_pct}%
         </span>
 
-        {/* Name + shared badge */}
+        {/* Name + shared badge + frequency */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[13px] font-medium text-text-primary">
@@ -146,6 +296,9 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
             {indicator.shared_group_id && (
               <Link2 className="h-3 w-3 shrink-0 text-secondary" strokeWidth={2} />
             )}
+            <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-text-tertiary">
+              {freqLabel}
+            </span>
           </div>
           {indicator.description && (
             <p className="mt-0.5 truncate text-[11px] text-text-tertiary">{indicator.description}</p>
@@ -180,15 +333,27 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
           <StatusBadge status={indicator.status} />
         </div>
 
-        {/* Add value button */}
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-secondary/10 hover:text-secondary group-hover:opacity-100"
-          title="Registrar valor"
-        >
-          <ClipboardList className="h-3.5 w-3.5" />
-        </button>
+        {/* Action buttons */}
+        <div className="flex gap-0.5">
+          <button
+            onClick={() => { setShowForm(!showForm); setShowConfig(false); }}
+            className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-secondary/10 hover:text-secondary group-hover:opacity-100"
+            title="Registrar valor"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => { setShowConfig(!showConfig); setShowForm(false); }}
+            className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-amber-500/10 hover:text-amber-600 group-hover:opacity-100"
+            title="Configurar indicador"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
+
+      {/* Config panel */}
+      {showConfig && <IndicatorConfigPanel indicator={indicator} />}
 
       {/* Inline value form */}
       {showForm && (
@@ -414,17 +579,38 @@ function TreeNode({ node, year, depth = 0 }: { node: ScorecardTreeNode; year: nu
 /* ════════════════════════════════════════════════════════════ */
 
 export default function SeguimentObjectius() {
-  const { selectedYear, selectedCompanyId } = useAppStore();
+  const { selectedYear, selectedCompanyId, setSelectedCompanyId } = useAppStore();
+  const { data: companies } = useCompanies();
   const { data: tree, isLoading } = useScorecardTree(selectedCompanyId, selectedYear);
+
+  // Auto-select first company if none selected
+  const firstCompany = companies?.[0];
+  if (!selectedCompanyId && firstCompany) {
+    setSelectedCompanyId(firstCompany.id);
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-[22px] font-bold text-text-primary">Seguiment Objectius</h1>
-        <p className="mt-1 text-[13px] text-text-secondary">
-          Objectius departamentals, per àrea i per equip — Any {selectedYear}
-        </p>
+      {/* Header + Company selector */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-bold text-text-primary">Seguiment Objectius</h1>
+          <p className="mt-1 text-[13px] text-text-secondary">
+            Objectius departamentals, per àrea i per equip — Any {selectedYear}
+          </p>
+        </div>
+        {companies && companies.length > 0 && (
+          <select
+            value={selectedCompanyId ?? ""}
+            onChange={(e) => setSelectedCompanyId(e.target.value || null)}
+            className="h-9 rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-text-primary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/20"
+          >
+            <option value="">Selecciona empresa...</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Summary cards */}

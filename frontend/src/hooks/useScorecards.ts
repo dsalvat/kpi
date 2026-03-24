@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { scorecardApi } from "@/api/client";
 import type { IndicatorValueCreate } from "@/types/scorecard";
+import type { IndicatorUpdateData } from "@/api/client";
 
 export function useScorecardTree(companyId: string | null, year: number) {
   return useQuery({
@@ -15,6 +16,17 @@ export function useAddIndicatorValue() {
   return useMutation({
     mutationFn: ({ indicatorId, data }: { indicatorId: string; data: IndicatorValueCreate }) =>
       scorecardApi.addValue(indicatorId, data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["scorecard-tree"] });
+    },
+  });
+}
+
+export function useUpdateIndicator() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ indicatorId, data }: { indicatorId: string; data: IndicatorUpdateData }) =>
+      scorecardApi.updateIndicator(indicatorId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["scorecard-tree"] });
     },

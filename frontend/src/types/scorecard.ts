@@ -34,7 +34,9 @@ export interface ScorecardIndicator {
   unit: string;
   weight_pct: number;
   direction: "higher_better" | "lower_better";
-  frequency: "monthly" | "quarterly" | "annual";
+  frequency: "weekly" | "monthly" | "quarterly" | "annual";
+  start_date: string | null;
+  end_date: string | null;
   source: string | null;
   source_config: Record<string, unknown> | null;
   kpi_definition_id: string | null;

@@ -13,6 +13,7 @@ import {
   useDeleteTeam,
   useCreateMember,
   useDeleteMember,
+  useUpdateMember,
 } from "@/hooks/useOrganization";
 import { useAppStore } from "@/store";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
@@ -969,11 +970,69 @@ function MemberRow({
   member: Member;
   onDelete: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    first_name: member.first_name,
+    last_name: member.last_name,
+    email: member.email,
+    position: member.position ?? "",
+    role: member.role,
+  });
+  const updateMember = useUpdateMember();
   const roleConfig = ROLE_CONFIG[member.role] ?? ROLE_CONFIG["membre"]!;
   const RoleIcon = roleConfig.icon;
 
+  const handleSave = () => {
+    updateMember.mutate(
+      { id: member.id, data: { ...form, position: form.position || null } },
+      { onSuccess: () => setEditing(false) },
+    );
+  };
+
+  const inputCls = "h-7 rounded border border-border bg-bg px-2 text-[12px] focus:border-secondary focus:outline-none";
+
+  if (editing) {
+    return (
+      <div className="rounded-lg border border-secondary/20 bg-secondary/3 px-2.5 py-2">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <input value={form.first_name}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+            className={inputCls} placeholder="Nom" autoFocus />
+          <input value={form.last_name}
+            onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+            className={inputCls} placeholder="Cognom" />
+          <input value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className={inputCls} placeholder="Email" />
+          <input value={form.position}
+            onChange={(e) => setForm({ ...form, position: e.target.value })}
+            className={inputCls} placeholder="Càrrec" />
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <select value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value as "director" | "responsable" | "coordinador" | "membre" })}
+            className={`${inputCls} w-36`}>
+            <option value="director">Director</option>
+            <option value="responsable">Responsable</option>
+            <option value="coordinador">Coordinador</option>
+            <option value="membre">Membre</option>
+          </select>
+          <div className="flex-1" />
+          <button onClick={handleSave} disabled={!form.first_name || !form.last_name || updateMember.isPending}
+            className="flex h-7 items-center gap-1 rounded-md bg-secondary px-3 text-[11px] font-medium text-white hover:bg-secondary/90 disabled:opacity-50">
+            <Check className="h-3 w-3" /> Desar
+          </button>
+          <button onClick={() => { setEditing(false); setForm({ first_name: member.first_name, last_name: member.last_name, email: member.email, position: member.position ?? "", role: member.role }); }}
+            className="flex h-7 items-center rounded-md px-2 text-[11px] text-text-tertiary hover:bg-gray-100">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-overlay-subtle">
+    <div className="group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-overlay-subtle">
       <div
         className={cn(
           "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
@@ -1008,8 +1067,16 @@ function MemberRow({
         {roleConfig.label}
       </span>
       <button
+        onClick={() => setEditing(true)}
+        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary opacity-0 hover:bg-secondary/10 hover:text-secondary group-hover:opacity-100"
+        title="Editar membre"
+      >
+        <Pencil className="h-3 w-3" strokeWidth={1.8} />
+      </button>
+      <button
         onClick={onDelete}
-        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary hover:bg-red-500/10 hover:text-red-500"
+        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary opacity-0 hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
+        title="Eliminar membre"
       >
         <Trash2 className="h-3 w-3" strokeWidth={1.8} />
       </button>
