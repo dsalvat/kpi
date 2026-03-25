@@ -41,7 +41,7 @@ class OKRKeyResult(Base):
     annual_target: Mapped[Decimal] = mapped_column(Numeric)
     direction: Mapped[str] = mapped_column(String(15))  # higher_better | lower_better
     kpi_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("kpi_definitions.id"), nullable=True
+        ForeignKey("kpi_definitions.id", ondelete="SET NULL"), nullable=True
     )
     kpi_aggregation: Mapped[str | None] = mapped_column(String(20), nullable=True)
     project_id: Mapped[uuid.UUID | None] = mapped_column(
