@@ -97,7 +97,9 @@ class Member(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("companies.id"))
-    team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"))
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id"), nullable=True
+    )
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(200))
@@ -108,6 +110,6 @@ class Member(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     company: Mapped["Company"] = relationship(back_populates="members")
-    team: Mapped["Team"] = relationship(
+    team: Mapped["Team | None"] = relationship(
         back_populates="members", foreign_keys=[team_id],
     )

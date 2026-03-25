@@ -3,7 +3,7 @@ import type { Credential, CredentialCreate, CredentialUpdate, CredentialSummary,
 import type { Dashboard } from "@/types/dashboard";
 import type { KPIDefinition, KPIDefinitionCreate, KPIDefinitionUpdate, KPIValue, KPIValueCreate, KPIValueUpdate, KPIStatusResponse } from "@/types/kpi";
 import type { Project, ProjectCreate } from "@/types/project";
-import type { OKRObjective } from "@/types/okr";
+import type { OKRObjective, OKRKeyResult, OKRObjectiveCreate, OKRObjectiveUpdate, OKRKeyResultCreate, OKRKeyResultUpdate } from "@/types/okr";
 import type { ValueSummary, ROI } from "@/types/value";
 import type { BudgetItem, BudgetItemCreate, BudgetItemUpdate, BudgetSummary, BudgetLookup, BudgetLookupCreate, BudgetLookupUpdate, BudgetLookupCategory } from "@/types/budget";
 import type { Company, CompanyCreate, Department, DepartmentCreate, Area, AreaCreate, Team, TeamCreate, TeamSummary, Member, MemberCreate, MemberUpdate, MemberSummary } from "@/types/organization";
@@ -106,7 +106,19 @@ export const projectApi = {
 export const okrApi = {
   list: (year?: number) =>
     api.get<OKRObjective[]>("/okrs/", { params: { year } }),
-  updateQuarterly: (id: string, data: { actual?: number; notes?: string }) =>
+  createObjective: (data: OKRObjectiveCreate) =>
+    api.post<OKRObjective>("/okrs/", data),
+  updateObjective: (id: string, data: OKRObjectiveUpdate) =>
+    api.put<OKRObjective>(`/okrs/${id}`, data),
+  deleteObjective: (id: string) =>
+    api.delete(`/okrs/${id}`),
+  createKeyResult: (data: OKRKeyResultCreate) =>
+    api.post<OKRKeyResult>("/okrs/key-results/", data),
+  updateKeyResult: (id: string, data: OKRKeyResultUpdate) =>
+    api.put<OKRKeyResult>(`/okrs/key-results/${id}`, data),
+  deleteKeyResult: (id: string) =>
+    api.delete(`/okrs/key-results/${id}`),
+  updateQuarterly: (id: string, data: { actual?: number; notes?: string; reset_auto?: boolean }) =>
     api.put(`/okrs/quarterly/${id}`, data),
 };
 
@@ -182,8 +194,8 @@ export const organizationApi = {
     api.get<TeamSummary[]>(`/organization/companies/${companyId}/teams/summary`),
 
   // Members
-  listMembers: (companyId: string, teamId?: string) =>
-    api.get<Member[]>(`/organization/companies/${companyId}/members/`, { params: { team_id: teamId } }),
+  listMembers: (companyId: string, params?: { team_id?: string; unassigned?: boolean }) =>
+    api.get<Member[]>(`/organization/companies/${companyId}/members/`, { params }),
   listMembersSummary: (companyId: string) =>
     api.get<MemberSummary[]>(`/organization/companies/${companyId}/members/summary`),
   createMember: (companyId: string, data: MemberCreate) =>

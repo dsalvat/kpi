@@ -133,9 +133,10 @@ async def delete_team(team_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def list_members(
     company_id: uuid.UUID,
     team_id: uuid.UUID | None = None,
+    unassigned: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_members(db, company_id, team_id)
+    return await svc.list_members(db, company_id, team_id, unassigned)
 
 
 @router.get("/companies/{company_id}/members/summary", response_model=list[MemberSummary])

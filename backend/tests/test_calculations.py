@@ -1,6 +1,7 @@
 import pytest
 
 from app.services.calculations import (
+    aggregate_kpi_quarterly,
     blue_money_item,
     global_roi,
     green_money_item,
@@ -8,6 +9,7 @@ from app.services.calculations import (
     kr_annual_progress,
     kr_progress,
     objective_progress,
+    quarter_months,
 )
 
 
@@ -166,3 +168,67 @@ class TestGlobalRoi:
 
     def test_breakeven(self):
         assert global_roi(30000, 30000, 60000) == pytest.approx(0.0)
+
+
+# --- quarter_months ---
+
+class TestQuarterMonths:
+    def test_q1(self):
+        assert quarter_months(1) == (1, 2, 3)
+
+    def test_q2(self):
+        assert quarter_months(2) == (4, 5, 6)
+
+    def test_q3(self):
+        assert quarter_months(3) == (7, 8, 9)
+
+    def test_q4(self):
+        assert quarter_months(4) == (10, 11, 12)
+
+
+# --- aggregate_kpi_quarterly ---
+
+class TestAggregateKpiQuarterly:
+    def test_avg_quarter_full_data(self):
+        values = [(1, 96.0), (2, 96.5), (3, 97.0)]
+        assert aggregate_kpi_quarterly(values, 1, "avg_quarter") == pytest.approx(96.5)
+
+    def test_avg_quarter_partial_data(self):
+        values = [(1, 96.0), (3, 97.0)]
+        assert aggregate_kpi_quarterly(values, 1, "avg_quarter") == pytest.approx(96.5)
+
+    def test_avg_quarter_single_month(self):
+        values = [(2, 96.5)]
+        assert aggregate_kpi_quarterly(values, 1, "avg_quarter") == pytest.approx(96.5)
+
+    def test_avg_quarter_no_data(self):
+        values = [(4, 96.0), (5, 97.0)]  # Q2 data, asking Q1
+        assert aggregate_kpi_quarterly(values, 1, "avg_quarter") is None
+
+    def test_avg_quarter_empty_list(self):
+        assert aggregate_kpi_quarterly([], 1, "avg_quarter") is None
+
+    def test_sum_cumulative_full_data(self):
+        values = [(1, 10.0), (2, 15.0), (3, 20.0)]
+        assert aggregate_kpi_quarterly(values, 1, "sum_cumulative") == pytest.approx(45.0)
+
+    def test_sum_cumulative_partial_data(self):
+        values = [(4, 10.0), (6, 30.0)]
+        assert aggregate_kpi_quarterly(values, 2, "sum_cumulative") == pytest.approx(40.0)
+
+    def test_sum_cumulative_no_data(self):
+        assert aggregate_kpi_quarterly([], 3, "sum_cumulative") is None
+
+    def test_q4_boundary(self):
+        values = [(10, 1.0), (11, 2.0), (12, 3.0)]
+        assert aggregate_kpi_quarterly(values, 4, "avg_quarter") == pytest.approx(2.0)
+        assert aggregate_kpi_quarterly(values, 4, "sum_cumulative") == pytest.approx(6.0)
+
+    def test_unknown_aggregation(self):
+        values = [(1, 96.0), (2, 96.5)]
+        assert aggregate_kpi_quarterly(values, 1, "unknown_method") is None
+
+    def test_ignores_other_quarter_data(self):
+        values = [(1, 10.0), (2, 20.0), (3, 30.0), (4, 40.0), (5, 50.0)]
+        assert aggregate_kpi_quarterly(values, 1, "avg_quarter") == pytest.approx(20.0)
+        assert aggregate_kpi_quarterly(values, 2, "avg_quarter") == pytest.approx(45.0)

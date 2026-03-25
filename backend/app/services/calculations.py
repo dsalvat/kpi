@@ -73,6 +73,40 @@ def global_roi(
 
 
 # ══════════════════════════════════════════════════════════
+# KPI → OKR quarterly aggregation
+# ══════════════════════════════════════════════════════════
+
+
+def quarter_months(quarter: int) -> tuple[int, int, int]:
+    """Return the 3 month numbers for a given quarter (1-4)."""
+    start = (quarter - 1) * 3 + 1
+    return (start, start + 1, start + 2)
+
+
+def aggregate_kpi_quarterly(
+    monthly_values: list[tuple[int, float]],
+    quarter: int,
+    aggregation: str,
+) -> float | None:
+    """Aggregate KPI monthly values into a quarterly actual.
+
+    monthly_values: list of (month, value) tuples for a given year.
+    quarter: 1-4.
+    aggregation: 'avg_quarter' or 'sum_cumulative'.
+    Returns None if no monthly values exist for that quarter or unknown aggregation.
+    """
+    months = set(quarter_months(quarter))
+    in_quarter = [v for m, v in monthly_values if m in months]
+    if not in_quarter:
+        return None
+    if aggregation == "avg_quarter":
+        return sum(in_quarter) / len(in_quarter)
+    if aggregation == "sum_cumulative":
+        return sum(in_quarter)
+    return None
+
+
+# ══════════════════════════════════════════════════════════
 # Scorecard calculations
 # ══════════════════════════════════════════════════════════
 

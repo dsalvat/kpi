@@ -222,9 +222,16 @@ async def delete_team(db: AsyncSession, team_id: uuid.UUID) -> bool:
 
 # ── Member ──
 
-async def list_members(db: AsyncSession, company_id: uuid.UUID, team_id: uuid.UUID | None = None) -> list[Member]:
+async def list_members(
+    db: AsyncSession,
+    company_id: uuid.UUID,
+    team_id: uuid.UUID | None = None,
+    unassigned: bool = False,
+) -> list[Member]:
     stmt = select(Member).where(Member.company_id == company_id)
-    if team_id:
+    if unassigned:
+        stmt = stmt.where(Member.team_id.is_(None))
+    elif team_id:
         stmt = stmt.where(Member.team_id == team_id)
     stmt = stmt.order_by(Member.last_name, Member.first_name)
     result = await db.execute(stmt)

@@ -17,6 +17,12 @@ class OKRObjective(Base):
     title: Mapped[str] = mapped_column(Text)
     owner: Mapped[str | None] = mapped_column(String(100), nullable=True)
     order_idx: Mapped[int] = mapped_column(default=0)
+    responsible_team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    responsible_member_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("members.id", ondelete="SET NULL"), nullable=True
+    )
 
     key_results: Mapped[list["OKRKeyResult"]] = relationship(
         back_populates="objective", cascade="all, delete-orphan"
@@ -38,6 +44,15 @@ class OKRKeyResult(Base):
         ForeignKey("kpi_definitions.id"), nullable=True
     )
     kpi_aggregation: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
+    )
+    responsible_team_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    responsible_member_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("members.id", ondelete="SET NULL"), nullable=True
+    )
     confidence: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     objective: Mapped["OKRObjective"] = relationship(back_populates="key_results")

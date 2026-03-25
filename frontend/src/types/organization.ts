@@ -13,7 +13,7 @@ export interface CompanyCreate {
 export interface Member {
   id: string;
   company_id: string;
-  team_id: string;
+  team_id: string | null;
   first_name: string;
   last_name: string;
   email: string;
@@ -23,7 +23,7 @@ export interface Member {
 }
 
 export interface MemberCreate {
-  team_id: string;
+  team_id?: string | null;
   first_name: string;
   last_name: string;
   email: string;
@@ -32,7 +32,7 @@ export interface MemberCreate {
 }
 
 export interface MemberUpdate {
-  team_id?: string;
+  team_id?: string | null;
   first_name?: string;
   last_name?: string;
   email?: string;
@@ -105,7 +105,7 @@ export interface MemberSummary {
   first_name: string;
   last_name: string;
   role: string;
-  team_id: string;
+  team_id: string | null;
 }
 
 export interface TeamSummary {

@@ -14,6 +14,10 @@ import {
   useCreateMember,
   useDeleteMember,
   useUpdateMember,
+  useUpdateDepartment,
+  useMembers,
+  useMembersSummary,
+  useTeamsSummary,
 } from "@/hooks/useOrganization";
 import { useAppStore } from "@/store";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
@@ -40,6 +44,8 @@ import {
   Mail,
   Briefcase,
   Pencil,
+  Network,
+  Search,
   Check,
   Globe,
 } from "lucide-react";
@@ -180,9 +186,9 @@ export default function Empreses() {
         ) : null}
       </section>
 
-      {/* Department tree */}
+      {/* Tabs: Organigrama | Persones */}
       {selectedCompanyId && (
-        <DepartmentTree
+        <OrgTabs
           companyId={selectedCompanyId}
           departments={departments ?? []}
           isLoading={isLoading}
@@ -425,6 +431,373 @@ function CompanyCard({
 }
 
 /* ════════════════════════════════════════════════════════════ */
+/*  Tabs: Organigrama + Persones                              */
+/* ════════════════════════════════════════════════════════════ */
+
+function OrgTabs({
+  companyId,
+  departments,
+  isLoading,
+}: {
+  companyId: string;
+  departments: Department[];
+  isLoading: boolean;
+}) {
+  const [tab, setTab] = useState<"org" | "people">("org");
+
+  return (
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex gap-1 rounded-xl bg-overlay-subtle p-1">
+        <button
+          onClick={() => setTab("org")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition-all",
+            tab === "org"
+              ? "bg-surface-elevated text-text-primary shadow-sm"
+              : "text-text-tertiary hover:text-text-secondary",
+          )}
+        >
+          <Network className="h-4 w-4" strokeWidth={1.8} />
+          Organigrama
+        </button>
+        <button
+          onClick={() => setTab("people")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition-all",
+            tab === "people"
+              ? "bg-surface-elevated text-text-primary shadow-sm"
+              : "text-text-tertiary hover:text-text-secondary",
+          )}
+        >
+          <Users className="h-4 w-4" strokeWidth={1.8} />
+          Persones
+        </button>
+      </div>
+
+      {/* Tab content */}
+      {tab === "org" && (
+        <DepartmentTree
+          companyId={companyId}
+          departments={departments}
+          isLoading={isLoading}
+        />
+      )}
+      {tab === "people" && (
+        <PeopleTab companyId={companyId} />
+      )}
+    </div>
+  );
+}
+
+/* ── People tab ── */
+
+function PeopleTab({ companyId }: { companyId: string }) {
+  const { data: members, isLoading } = useMembers(companyId);
+  const { data: teams } = useTeamsSummary(companyId);
+  const createMember = useCreateMember();
+  const updateMember = useUpdateMember();
+  const deleteMember = useDeleteMember();
+
+  const [search, setSearch] = useState("");
+  const [filterTeam, setFilterTeam] = useState<string>("all");
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    position: "",
+    role: "membre" as string,
+    team_id: "" as string,
+  });
+
+  const filtered = useMemo(() => {
+    if (!members) return [];
+    return members.filter((m) => {
+      if (filterTeam === "unassigned" && m.team_id !== null) return false;
+      if (filterTeam !== "all" && filterTeam !== "unassigned" && m.team_id !== filterTeam) return false;
+      if (search) {
+        const s = search.toLowerCase();
+        const full = `${m.first_name} ${m.last_name} ${m.email} ${m.position ?? ""}`.toLowerCase();
+        if (!full.includes(s)) return false;
+      }
+      return true;
+    });
+  }, [members, search, filterTeam]);
+
+  const teamMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    teams?.forEach((t) => { map[t.id] = `${t.code} — ${t.name}`; });
+    return map;
+  }, [teams]);
+
+  const startCreate = () => {
+    setForm({ first_name: "", last_name: "", email: "", position: "", role: "membre", team_id: "" });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const startEdit = (m: Member) => {
+    setForm({
+      first_name: m.first_name,
+      last_name: m.last_name,
+      email: m.email,
+      position: m.position ?? "",
+      role: m.role,
+      team_id: m.team_id ?? "",
+    });
+    setEditingId(m.id);
+    setShowForm(false);
+  };
+
+  const handleSave = async () => {
+    if (editingId) {
+      await updateMember.mutateAsync({
+        id: editingId,
+        data: {
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          position: form.position || null,
+          role: form.role,
+          team_id: form.team_id || null,
+        },
+      });
+      setEditingId(null);
+    } else {
+      await createMember.mutateAsync({
+        companyId,
+        data: {
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          position: form.position || undefined,
+          role: form.role,
+          team_id: form.team_id || undefined,
+        },
+      });
+      setShowForm(false);
+      setForm({ first_name: "", last_name: "", email: "", position: "", role: "membre", team_id: "" });
+    }
+  };
+
+  const ROLE_LABELS: Record<string, string> = {
+    director: "Director",
+    responsable: "Responsable",
+    coordinador: "Coordinador",
+    membre: "Membre",
+  };
+
+  if (isLoading) return <SkeletonCard />;
+
+  return (
+    <section className="space-y-4">
+      {/* Header + search + filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" strokeWidth={1.8} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cercar per nom, email, posicio..."
+            className="w-full rounded-lg border border-border bg-surface-elevated py-2 pl-9 pr-3 text-[13px] text-text-primary placeholder:text-text-tertiary/50 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/30"
+          />
+        </div>
+        <select
+          value={filterTeam}
+          onChange={(e) => setFilterTeam(e.target.value)}
+          className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-[12px] text-text-primary focus:border-secondary focus:outline-none"
+        >
+          <option value="all">Tots els equips</option>
+          <option value="unassigned">Sense equip</option>
+          {teams?.map((t) => (
+            <option key={t.id} value={t.id}>{t.code} — {t.name}</option>
+          ))}
+        </select>
+        <button
+          onClick={startCreate}
+          className="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-secondary/90"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+          Nova persona
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div className="card animate-fade-in-up p-4">
+          <div className="grid grid-cols-6 gap-3">
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">Nom</label>
+              <input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1.5 text-[13px] text-text-primary focus:border-secondary focus:outline-none" autoFocus />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">Cognoms</label>
+              <input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1.5 text-[13px] text-text-primary focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">Email</label>
+              <input value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1.5 text-[13px] text-text-primary focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">Posicio</label>
+              <input value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1.5 text-[13px] text-text-primary focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">Equip</label>
+              <select value={form.team_id} onChange={(e) => setForm((p) => ({ ...p, team_id: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1.5 text-[12px] text-text-primary focus:border-secondary focus:outline-none">
+                <option value="">Sense equip</option>
+                {teams?.map((t) => (
+                  <option key={t.id} value={t.id}>{t.code} — {t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={handleSave}
+                disabled={createMember.isPending || !form.first_name || !form.last_name || !form.email}
+                className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                Desar
+              </button>
+              <button onClick={() => setShowForm(false)} className="rounded-lg bg-overlay-active px-3 py-1.5 text-[12px] text-text-secondary">
+                <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="card overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-border-subtle bg-overlay-subtle/50">
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Nom</th>
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Email</th>
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Posicio</th>
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Equip</th>
+              <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Rol</th>
+              <th className="w-20 px-4 py-2.5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-[13px] text-text-tertiary">
+                  {members?.length === 0 ? "Sense persones. Afegeix la primera." : "Cap resultat amb els filtres actuals."}
+                </td>
+              </tr>
+            )}
+            {filtered.map((m) => {
+              const isEditing = editingId === m.id;
+              return (
+                <tr key={m.id} className={cn("border-b border-border-subtle last:border-0 transition-colors", isEditing ? "bg-secondary/5" : "hover:bg-overlay-subtle/50")}>
+                  {isEditing ? (
+                    <>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} className="w-1/2 rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none" />
+                          <input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} className="w-1/2 rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none" />
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <select value={form.team_id} onChange={(e) => setForm((p) => ({ ...p, team_id: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none">
+                          <option value="">Sense equip</option>
+                          {teams?.map((t) => (
+                            <option key={t.id} value={t.id}>{t.code} — {t.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">
+                        <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} className="w-full rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] focus:border-secondary focus:outline-none">
+                          <option value="director">Director</option>
+                          <option value="responsable">Responsable</option>
+                          <option value="coordinador">Coordinador</option>
+                          <option value="membre">Membre</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-1">
+                          <button onClick={handleSave} disabled={updateMember.isPending} className="flex h-6 w-6 items-center justify-center rounded bg-secondary text-white disabled:opacity-50">
+                            <Check className="h-3 w-3" strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => setEditingId(null)} className="flex h-6 w-6 items-center justify-center rounded bg-overlay-active text-text-secondary">
+                            <X className="h-3 w-3" strokeWidth={2.5} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-2.5 text-[13px] font-medium text-text-primary">
+                        {m.first_name} {m.last_name}
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] text-text-tertiary">
+                        {m.email}
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] text-text-secondary">
+                        {m.position ?? "\u2014"}
+                      </td>
+                      <td className="px-4 py-2.5 text-[12px] text-text-secondary">
+                        {m.team_id ? (teamMap[m.team_id] ?? "\u2014") : (
+                          <span className="italic text-text-tertiary/60">Sense equip</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                          m.role === "director" ? "bg-amber-500/10 text-amber-600" :
+                          m.role === "responsable" ? "bg-violet-500/10 text-violet-600" :
+                          m.role === "coordinador" ? "bg-blue-500/10 text-blue-600" :
+                          "bg-slate-500/10 text-slate-500",
+                        )}>
+                          {ROLE_LABELS[m.role] ?? m.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex gap-1">
+                          <button onClick={() => startEdit(m)} className="flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-secondary/10 hover:text-secondary">
+                            <Pencil className="h-3 w-3" strokeWidth={1.8} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Eliminar ${m.first_name} ${m.last_name}?`))
+                                deleteMember.mutate(m.id);
+                            }}
+                            className="flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-500/10 hover:text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" strokeWidth={1.8} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Count */}
+      <p className="text-[11px] text-text-tertiary">
+        {filtered.length} de {members?.length ?? 0} persones
+      </p>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════ */
 /*  Department tree                                           */
 /* ════════════════════════════════════════════════════════════ */
 
@@ -531,55 +904,153 @@ function DepartmentCard({
   companyId: string;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(dept.name);
+  const [editDirectorId, setEditDirectorId] = useState(dept.director_id ?? "");
   const deleteDept = useDeleteDepartment();
+  const updateDept = useUpdateDepartment();
   const createArea = useCreateArea();
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [areaForm, setAreaForm] = useState({ name: "", code: "" });
+  const { data: members } = useMembersSummary(editing ? companyId : null);
+
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditName(dept.name);
+    setEditDirectorId(dept.director_id ?? "");
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editName.trim()) return;
+    await updateDept.mutateAsync({
+      id: dept.id,
+      data: {
+        name: editName.trim(),
+        director_id: editDirectorId || null,
+      },
+    });
+    setEditing(false);
+  };
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditing(false);
+  };
 
   return (
     <div className="card overflow-hidden animate-fade-in-up">
       {/* Department header */}
       <div
         className="flex cursor-pointer items-center gap-3 border-b border-border-subtle px-5 py-3.5 transition-colors hover:bg-overlay-subtle"
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => !editing && setExpanded((e) => !e)}
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/8">
           <Building2 className="h-4 w-4 text-secondary" strokeWidth={1.8} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
-              {dept.code}
-            </span>
-            <span className="text-[15px] font-semibold text-text-primary">
-              {dept.name}
-            </span>
-          </div>
-          {dept.director && (
-            <p className="mt-0.5 text-[12px] text-text-tertiary">
-              Director: {dept.director.first_name} {dept.director.last_name}
-            </p>
+          {editing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2">
+                <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
+                  {dept.code}
+                </span>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="flex-1 rounded border border-border bg-overlay-muted px-2 py-1 text-[14px] font-semibold text-text-primary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/30"
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Crown className="h-3.5 w-3.5 text-amber-500" strokeWidth={1.8} />
+                <select
+                  value={editDirectorId}
+                  onChange={(e) => setEditDirectorId(e.target.value)}
+                  className="flex-1 rounded border border-border bg-overlay-muted px-2 py-1 text-[12px] text-text-primary focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary/30"
+                >
+                  <option value="">Sense director</option>
+                  {members
+                    ?.slice()
+                    .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name))
+                    .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.last_name}, {m.first_name} ({m.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-data text-[11px] font-semibold uppercase tracking-wider text-secondary">
+                  {dept.code}
+                </span>
+                <span className="text-[15px] font-semibold text-text-primary">
+                  {dept.name}
+                </span>
+              </div>
+              {dept.director && (
+                <p className="mt-0.5 text-[12px] text-text-tertiary">
+                  Director: {dept.director.first_name} {dept.director.last_name}
+                </p>
+              )}
+              {!dept.director && (
+                <p className="mt-0.5 text-[12px] italic text-text-tertiary/60">
+                  Sense director assignat
+                </p>
+              )}
+            </>
           )}
         </div>
-        <span className="text-[11px] text-text-tertiary">
-          {dept.areas.length} arees
-        </span>
-        <ChevronRight
-          className={cn(
-            "h-4 w-4 text-text-tertiary transition-transform",
-            expanded && "rotate-90",
-          )}
-        />
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm(`Eliminar departament ${dept.code}?`))
-              deleteDept.mutate(dept.id);
-          }}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-500/10 hover:text-red-500"
-        >
-          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
-        </button>
+        {editing ? (
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={handleSaveEdit}
+              disabled={updateDept.isPending || !editName.trim()}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-white disabled:opacity-50"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-overlay-active text-text-secondary"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <span className="text-[11px] text-text-tertiary">
+              {dept.areas.length} arees
+            </span>
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 text-text-tertiary transition-transform",
+                expanded && "rotate-90",
+              )}
+            />
+            <button
+              onClick={handleStartEdit}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-secondary/10 hover:text-secondary"
+            >
+              <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Eliminar departament ${dept.code}?`))
+                  deleteDept.mutate(dept.id);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-text-tertiary hover:bg-red-500/10 hover:text-red-500"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Areas */}
@@ -762,7 +1233,7 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
   const [expanded, setExpanded] = useState(false);
   const deleteTeam = useDeleteTeam();
   const createMember = useCreateMember();
-  const deleteMember = useDeleteMember();
+  const updateMemberOrg = useUpdateMember();
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [memberForm, setMemberForm] = useState({
     first_name: "",
@@ -946,10 +1417,10 @@ function TeamCard({ team, companyId }: { team: Team; companyId: string }) {
                   onDelete={() => {
                     if (
                       confirm(
-                        `Eliminar ${member.first_name} ${member.last_name}?`,
+                        `Desassignar ${member.first_name} ${member.last_name} de l'equip?`,
                       )
                     )
-                      deleteMember.mutate(member.id);
+                      updateMemberOrg.mutate({ id: member.id, data: { team_id: null } });
                   }}
                 />
               ))}
@@ -1075,10 +1546,10 @@ function MemberRow({
       </button>
       <button
         onClick={onDelete}
-        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary opacity-0 hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
-        title="Eliminar membre"
+        className="flex h-6 w-6 items-center justify-center rounded text-text-tertiary opacity-0 hover:bg-amber-500/10 hover:text-amber-600 group-hover:opacity-100"
+        title="Desassignar de l'equip"
       >
-        <Trash2 className="h-3 w-3" strokeWidth={1.8} />
+        <X className="h-3 w-3" strokeWidth={2} />
       </button>
     </div>
   );

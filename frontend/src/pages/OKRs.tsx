@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
 import { getChartThemeColors } from "@/styles/tokens";
 import type { OKRObjective, OKRKeyResult, OKRQuarterlyData } from "@/types/okr";
-import { ChevronDown, Pencil, Check, X } from "lucide-react";
+import { ChevronDown, Pencil, Check, X, Zap, Link2, Users, FolderKanban, RotateCcw } from "lucide-react";
 
 const OBJ_COLORS: string[] = [
   "#2563eb", // O1 blue
@@ -119,7 +119,7 @@ export default function OKRs() {
                     <span className="text-data text-lg font-semibold text-text-primary">
                       {obj.progress != null
                         ? `${Math.round(obj.progress * 100)}%`
-                        : "—"}
+                        : "\u2014"}
                     </span>
                   </div>
                   <p className="mt-1.5 line-clamp-2 text-[11px] leading-tight text-text-tertiary">
@@ -224,8 +224,19 @@ function ObjectiveCard({
           <h3 className="text-[14px] font-semibold text-text-primary">
             {objective.title}
           </h3>
-          <div className="mt-1 flex items-center gap-3 text-[12px] text-text-tertiary">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-text-tertiary">
             {objective.owner && <span>{objective.owner}</span>}
+            {objective.responsible_team_name && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                <Users className="h-2.5 w-2.5" />
+                {objective.responsible_team_name}
+              </span>
+            )}
+            {objective.responsible_member_name && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-inset ring-violet-500/20">
+                {objective.responsible_member_name}
+              </span>
+            )}
             <span>
               {objective.key_results.length} Key Results
             </span>
@@ -302,6 +313,8 @@ function KRDetailRow({
     },
   };
 
+  const hasLinkages = kr.kpi_code || kr.project_name || kr.responsible_team_name;
+
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
       {/* KR header */}
@@ -331,7 +344,7 @@ function KRDetailRow({
             <span>
               {"Baseline: "}
               <span className="text-data font-medium">
-                {kr.baseline ?? "—"}
+                {kr.baseline ?? "\u2014"}
               </span>
             </span>
             <span>
@@ -346,6 +359,36 @@ function KRDetailRow({
                 : "Menys es millor"}
             </span>
           </div>
+
+          {/* Linkages row */}
+          {hasLinkages && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {kr.kpi_code && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-400 ring-1 ring-inset ring-sky-500/20">
+                  <Link2 className="h-2.5 w-2.5" />
+                  KPI: {kr.kpi_code}
+                  {kr.kpi_name && <span className="text-sky-400/70"> {kr.kpi_name}</span>}
+                </span>
+              )}
+              {kr.project_name && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
+                  <FolderKanban className="h-2.5 w-2.5" />
+                  {kr.project_name}
+                </span>
+              )}
+              {kr.responsible_team_name && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                  <Users className="h-2.5 w-2.5" />
+                  {kr.responsible_team_name}
+                </span>
+              )}
+              {kr.responsible_member_name && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-inset ring-violet-500/20">
+                  {kr.responsible_member_name}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {progressPct != null && (
           <span
@@ -415,6 +458,14 @@ function QuarterCell({
     onDone();
   };
 
+  const handleResetAuto = async () => {
+    await mutation.mutateAsync({
+      id: qd.id,
+      data: { reset_auto: true },
+    });
+    onDone();
+  };
+
   // Calculate quarter status
   const hasActual = qd.actual != null;
   const hasTarget = qd.target != null;
@@ -436,9 +487,22 @@ function QuarterCell({
   if (editing) {
     return (
       <div className="rounded-lg border-2 border-okr/30 bg-okr-light/30 p-2">
-        <p className="text-[10px] font-semibold uppercase text-text-tertiary">
-          Q{qd.quarter}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase text-text-tertiary">
+            Q{qd.quarter}
+          </p>
+          {qd.is_manual && kr.kpi_id && (
+            <button
+              onClick={handleResetAuto}
+              disabled={mutation.isPending}
+              className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] text-sky-400 hover:bg-sky-500/10 disabled:opacity-50"
+              title="Tornar a auto-calcul"
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+              Auto
+            </button>
+          )}
+        </div>
         <input
           type="number"
           step="any"
@@ -472,9 +536,14 @@ function QuarterCell({
       className="group rounded-lg border border-border-subtle bg-surface-elevated p-2 text-left transition-colors hover:border-okr/30 hover:bg-okr-light/20"
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase text-text-tertiary">
-          Q{qd.quarter}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="text-[10px] font-semibold uppercase text-text-tertiary">
+            Q{qd.quarter}
+          </p>
+          {qd.is_auto_calculated && (
+            <Zap className="h-2.5 w-2.5 text-sky-400" aria-label="Auto-calculat des del KPI" />
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <span
             className={cn(
@@ -497,11 +566,14 @@ function QuarterCell({
         <p className="text-[11px]">
           {"A: "}
           {hasActual ? (
-            <span className="text-data font-semibold text-text-primary">
-              {Number(qd.actual).toLocaleString("ca-ES")}
+            <span className={cn(
+              "text-data font-semibold",
+              qd.is_auto_calculated ? "text-sky-400" : "text-text-primary",
+            )}>
+              {Number(qd.actual).toLocaleString("ca-ES", { maximumFractionDigits: 2 })}
             </span>
           ) : (
-            <span className="text-text-tertiary">—</span>
+            <span className="text-text-tertiary">{"\u2014"}</span>
           )}
         </p>
       </div>

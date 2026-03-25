@@ -29,7 +29,7 @@ class CompanyUpdate(BaseModel):
 class MemberRead(BaseModel):
     id: uuid.UUID
     company_id: uuid.UUID
-    team_id: uuid.UUID
+    team_id: uuid.UUID | None = None
     first_name: str
     last_name: str
     email: str
@@ -41,7 +41,7 @@ class MemberRead(BaseModel):
 
 
 class MemberCreate(BaseModel):
-    team_id: uuid.UUID
+    team_id: uuid.UUID | None = None
     first_name: str
     last_name: str
     email: str
@@ -161,7 +161,7 @@ class MemberSummary(BaseModel):
     first_name: str
     last_name: str
     role: str
-    team_id: uuid.UUID
+    team_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 

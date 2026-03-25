@@ -169,7 +169,11 @@ export function useCreateMember() {
       companyId: string;
       data: MemberCreate;
     }) => organizationApi.createMember(companyId, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["members-summary"] });
+    },
   });
 }
 
@@ -178,7 +182,11 @@ export function useUpdateMember() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: MemberUpdate }) =>
       organizationApi.updateMember(id, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["members-summary"] });
+    },
   });
 }
 
@@ -186,6 +194,37 @@ export function useDeleteMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => organizationApi.deleteMember(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["members-summary"] });
+    },
+  });
+}
+
+export function useTeamsSummary(companyId: string | null) {
+  return useQuery({
+    queryKey: ["teams-summary", companyId],
+    queryFn: () =>
+      organizationApi.listTeamsSummary(companyId!).then((r) => r.data),
+    enabled: !!companyId,
+  });
+}
+
+export function useMembers(companyId: string | null) {
+  return useQuery({
+    queryKey: ["members", companyId],
+    queryFn: () =>
+      organizationApi.listMembers(companyId!).then((r) => r.data),
+    enabled: !!companyId,
+  });
+}
+
+export function useMembersSummary(companyId: string | null) {
+  return useQuery({
+    queryKey: ["members-summary", companyId],
+    queryFn: () =>
+      organizationApi.listMembersSummary(companyId!).then((r) => r.data),
+    enabled: !!companyId,
   });
 }
