@@ -1,0 +1,433 @@
+{
+  "name": "SDIT Weekly Ops — Backlog, P1/P2 Resolution, Time Logged, Changes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": 1,
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const now = new Date();\nconst dayOfWeek = now.getDay();\nconst weekEnd = new Date(now);\nweekEnd.setDate(now.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));\nweekEnd.setHours(23, 59, 59, 999);\nconst weekStart = new Date(weekEnd);\nweekStart.setDate(weekEnd.getDate() - 6);\nweekStart.setHours(0, 0, 0, 0);\nconst fmt = (d) => d.toISOString().split('T')[0];\nconst jan1 = new Date(weekEnd.getFullYear(), 0, 1);\nconst weekNum = Math.ceil(((weekEnd - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n\nreturn [{\n  json: {\n    weekStart: fmt(weekStart),\n    weekEnd: fmt(weekEnd),\n    year: weekEnd.getFullYear(),\n    week: weekNum,\n    jiraBaseUrl: 'https://casaametller.atlassian.net',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
+      },
+      "id": "calc-dates",
+      "name": "Calculate Week Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "project = SDIT AND type IN (\"[System] Incident\", \"[System] Service request\", \"[System] Service request with approvals\") AND statusCategory != Done"
+            },
+            { "name": "maxResults", "value": "5000" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "backlog-count",
+      "name": "JQL Backlog Count",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 100],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const issues = $('JQL Backlog Count').first().json.issues || [];\nconst backlogTotal = issues.length;\nconst dates = $('Calculate Week Range').first().json;\nreturn [{ json: { kpi_code: 'SRV-BKL', year: dates.year, month: dates.week, value: backlogTotal, notes: `Backlog total: ${backlogTotal} tickets (setmana ${dates.week})`, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "calc-backlog",
+      "name": "Calc SRV-BKL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type = \"[System] Incident\" AND priority = P1 AND cf[11006] = \"Sistemes\" AND resolved >= \"{{ $('Calculate Week Range').first().json.weekStart }}\" AND resolved <= \"{{ $('Calculate Week Range').first().json.weekEnd }}\""
+            },
+            { "name": "fields", "value": "key,summary,priority,resolutiondate,created" },
+            { "name": "maxResults", "value": "100" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "p1-incidents",
+      "name": "JQL P1 Incidents (Sistemes)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 300],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const issues = $('JQL P1 Incidents (Sistemes)').first().json.issues || [];\nconst dates = $('Calculate Week Range').first().json;\nif (issues.length === 0) {\n  return [{ json: { kpi_code: 'SRV-P1R', year: dates.year, month: dates.week, value: 100, notes: 'Cap P1 resolt aquesta setmana', workflow_id: 'jira-sdit-weekly-ops' } }];\n}\nreturn issues.map(issue => ({ json: { issueKey: issue.key, created: issue.fields.created, resolutiondate: issue.fields.resolutiondate } }));"
+      },
+      "id": "prepare-p1-sla",
+      "name": "Prepare P1 SLA Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/servicedeskapi/request/{{ $json.issueKey }}/sla",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "X-ExperimentalApi", "value": "opt-in" }] },
+        "options": { "batching": { "batch": { "batchSize": 5, "batchInterval": 500 } }, "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-p1-sla",
+      "name": "Fetch P1 SLA Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [920, 300],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const slaResults = $input.all();\nconst dates = $('Calculate Week Range').first().json;\nconst TWO_HOURS_MS = 2 * 60 * 60 * 1000;\nlet withinTarget = 0, total = 0;\nfor (const item of slaResults) {\n  const values = item.json.values || item.json.slaValues || [];\n  const resSLA = values.find(s => (s.name || '').toLowerCase().includes('resolution') || (s.metric?.name || '').toLowerCase().includes('resolution'));\n  if (resSLA) {\n    total++;\n    const cycle = resSLA.completedCycles?.[0] || resSLA.ongoingCycle;\n    if (cycle && (cycle.elapsedTime?.millis || 0) <= TWO_HOURS_MS) withinTarget++;\n  }\n}\nconst pct = total > 0 ? Math.round((withinTarget / total) * 10000) / 100 : 100;\nreturn [{ json: { kpi_code: 'SRV-P1R', year: dates.year, month: dates.week, value: pct, notes: `${withinTarget}/${total} P1 resolts dins 2h (setmana ${dates.week})`, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "calc-p1r",
+      "name": "Calc SRV-P1R",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type = \"[System] Incident\" AND priority IN (P1, P2) AND cf[11006] = \"Sistemes\" AND resolved >= \"{{ $('Calculate Week Range').first().json.weekStart }}\" AND resolved <= \"{{ $('Calculate Week Range').first().json.weekEnd }}\""
+            },
+            { "name": "fields", "value": "key,summary,priority,resolutiondate,created" },
+            { "name": "maxResults", "value": "100" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "p1p2-incidents",
+      "name": "JQL P1+P2 Incidents (Sistemes)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 500],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const issues = $('JQL P1+P2 Incidents (Sistemes)').first().json.issues || [];\nconst dates = $('Calculate Week Range').first().json;\nif (issues.length === 0) {\n  return [{ json: { kpi_code: 'SRV-P12', year: dates.year, month: dates.week, value: 100, notes: 'Cap P1/P2 resolt aquesta setmana', workflow_id: 'jira-sdit-weekly-ops' } }];\n}\nreturn issues.map(issue => ({ json: { issueKey: issue.key, created: issue.fields.created, resolutiondate: issue.fields.resolutiondate } }));"
+      },
+      "id": "prepare-p1p2-sla",
+      "name": "Prepare P1+P2 SLA Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/servicedeskapi/request/{{ $json.issueKey }}/sla",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "X-ExperimentalApi", "value": "opt-in" }] },
+        "options": { "batching": { "batch": { "batchSize": 5, "batchInterval": 500 } }, "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-p1p2-sla",
+      "name": "Fetch P1+P2 SLA Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [920, 500],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const slaResults = $input.all();\nconst dates = $('Calculate Week Range').first().json;\nconst FIVE_HOURS_MS = 5 * 60 * 60 * 1000;\nlet withinTarget = 0, total = 0;\nfor (const item of slaResults) {\n  const values = item.json.values || item.json.slaValues || [];\n  const resSLA = values.find(s => (s.name || '').toLowerCase().includes('resolution') || (s.metric?.name || '').toLowerCase().includes('resolution'));\n  if (resSLA) {\n    total++;\n    const cycle = resSLA.completedCycles?.[0] || resSLA.ongoingCycle;\n    if (cycle && (cycle.elapsedTime?.millis || 0) <= FIVE_HOURS_MS) withinTarget++;\n  }\n}\nconst pct = total > 0 ? Math.round((withinTarget / total) * 10000) / 100 : 100;\nreturn [{ json: { kpi_code: 'SRV-P12', year: dates.year, month: dates.week, value: pct, notes: `${withinTarget}/${total} P1+P2 resolts dins 5h (setmana ${dates.week})`, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "calc-p1p2",
+      "name": "Calc SRV-P12",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND worklogDate >= \"{{ $('Calculate Week Range').first().json.weekStart }}\" AND worklogDate <= \"{{ $('Calculate Week Range').first().json.weekEnd }}\""
+            },
+            { "name": "fields", "value": "key,worklog" },
+            { "name": "maxResults", "value": "200" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "worklog-issues",
+      "name": "JQL Issues with Worklogs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 700],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const issues = $('JQL Issues with Worklogs').first().json.issues || [];\nconst dates = $('Calculate Week Range').first().json;\nconst weekStartMs = new Date(dates.weekStart).getTime();\nconst weekEndMs = new Date(dates.weekEnd + 'T23:59:59Z').getTime();\nconst TARGET_SECONDS = 40 * 3600;\nconst byAuthor = {};\nfor (const issue of issues) {\n  const worklogs = issue.fields?.worklog?.worklogs || [];\n  for (const wl of worklogs) {\n    const started = new Date(wl.started).getTime();\n    if (started >= weekStartMs && started <= weekEndMs) {\n      const author = wl.author?.displayName || wl.author?.emailAddress || 'unknown';\n      byAuthor[author] = (byAuthor[author] || 0) + (wl.timeSpentSeconds || 0);\n    }\n  }\n}\nconst authors = Object.entries(byAuthor);\nif (authors.length === 0) {\n  return [{ json: { kpi_code: 'SRV-TIM', year: dates.year, month: dates.week, value: 0, notes: 'Cap worklog registrat aquesta setmana', workflow_id: 'jira-sdit-weekly-ops' } }];\n}\nconst pctPerAuthor = authors.map(([, secs]) => (secs / TARGET_SECONDS) * 100);\nconst avgPct = Math.round((pctPerAuthor.reduce((a, b) => a + b, 0) / pctPerAuthor.length) * 100) / 100;\nconst avgHours = Math.round((authors.reduce((sum, [, s]) => sum + s, 0) / authors.length / 3600) * 10) / 10;\nreturn [{ json: { kpi_code: 'SRV-TIM', year: dates.year, month: dates.week, value: avgPct, notes: `${authors.length} persones, mitjana ${avgHours}h/40h (setmana ${dates.week})`, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "calc-time",
+      "name": "Calc SRV-TIM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 700]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "jql", "value": "project = SDIT AND type = \"[System] Change\" AND statusCategory != Done" },
+            { "name": "maxResults", "value": "5000" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "changes-total",
+      "name": "JQL Changes Total",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 900],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Week Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "jql", "value": "project = SDIT AND type = \"[System] Change\" AND statusCategory != Done AND dueDate IS EMPTY" },
+            { "name": "maxResults", "value": "5000" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "changes-no-due",
+      "name": "JQL Changes No Due Date",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 1100],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      },
+      "id": "merge-chg",
+      "name": "Merge CHG Inputs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [700, 1000]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Input 0 = Changes Total, Input 1 = Changes No Due Date\nconst items = $input.all();\nconst totalChanges = (items[0]?.json?.issues || []).length;\nconst noDueDate = (items[1]?.json?.issues || []).length;\nconst dates = $('Calculate Week Range').first().json;\nconst withDueDate = totalChanges - noDueDate;\nconst pct = totalChanges > 0 ? Math.round((withDueDate / totalChanges) * 10000) / 100 : 100;\nreturn [{ json: { kpi_code: 'SRV-CHG', year: dates.year, month: dates.week, value: pct, notes: `${withDueDate}/${totalChanges} changes amb Due Date (setmana ${dates.week})`, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "calc-changes",
+      "name": "Calc SRV-CHG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 1000]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 5
+      },
+      "id": "merge-wait",
+      "name": "Wait All Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1400, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const allItems = $input.all().map(item => item.json);\nreturn [{ json: { items: allItems, workflow_id: 'jira-sdit-weekly-ops' } }];"
+      },
+      "id": "build-batch",
+      "name": "Build Batch Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1620, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Calculate Week Range').first().json.kpiApiUrl }}/api/v1/ingest/batch/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KPI_API_CREDENTIAL_ID",
+          "name": "KPI Platform Ingest Token"
+        }
+      },
+      "id": "send-to-api",
+      "name": "POST Ingest Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1840, 500]
+    }
+  ],
+  "connections": {
+    "Every Monday 07:00": {
+      "main": [[ { "node": "Calculate Week Range", "type": "main", "index": 0 } ]]
+    },
+    "Calculate Week Range": {
+      "main": [[
+        { "node": "JQL Backlog Count", "type": "main", "index": 0 },
+        { "node": "JQL P1 Incidents (Sistemes)", "type": "main", "index": 0 },
+        { "node": "JQL P1+P2 Incidents (Sistemes)", "type": "main", "index": 0 },
+        { "node": "JQL Issues with Worklogs", "type": "main", "index": 0 },
+        { "node": "JQL Changes Total", "type": "main", "index": 0 },
+        { "node": "JQL Changes No Due Date", "type": "main", "index": 0 }
+      ]]
+    },
+    "JQL Backlog Count": {
+      "main": [[ { "node": "Calc SRV-BKL", "type": "main", "index": 0 } ]]
+    },
+    "JQL P1 Incidents (Sistemes)": {
+      "main": [[ { "node": "Prepare P1 SLA Lookup", "type": "main", "index": 0 } ]]
+    },
+    "Prepare P1 SLA Lookup": {
+      "main": [[ { "node": "Fetch P1 SLA Data", "type": "main", "index": 0 } ]]
+    },
+    "Fetch P1 SLA Data": {
+      "main": [[ { "node": "Calc SRV-P1R", "type": "main", "index": 0 } ]]
+    },
+    "JQL P1+P2 Incidents (Sistemes)": {
+      "main": [[ { "node": "Prepare P1+P2 SLA Lookup", "type": "main", "index": 0 } ]]
+    },
+    "Prepare P1+P2 SLA Lookup": {
+      "main": [[ { "node": "Fetch P1+P2 SLA Data", "type": "main", "index": 0 } ]]
+    },
+    "Fetch P1+P2 SLA Data": {
+      "main": [[ { "node": "Calc SRV-P12", "type": "main", "index": 0 } ]]
+    },
+    "JQL Issues with Worklogs": {
+      "main": [[ { "node": "Calc SRV-TIM", "type": "main", "index": 0 } ]]
+    },
+    "JQL Changes Total": {
+      "main": [[ { "node": "Merge CHG Inputs", "type": "main", "index": 0 } ]]
+    },
+    "JQL Changes No Due Date": {
+      "main": [[ { "node": "Merge CHG Inputs", "type": "main", "index": 1 } ]]
+    },
+    "Merge CHG Inputs": {
+      "main": [[ { "node": "Calc SRV-CHG", "type": "main", "index": 0 } ]]
+    },
+    "Calc SRV-BKL": {
+      "main": [[ { "node": "Wait All Branches", "type": "main", "index": 0 } ]]
+    },
+    "Calc SRV-P1R": {
+      "main": [[ { "node": "Wait All Branches", "type": "main", "index": 1 } ]]
+    },
+    "Calc SRV-P12": {
+      "main": [[ { "node": "Wait All Branches", "type": "main", "index": 2 } ]]
+    },
+    "Calc SRV-TIM": {
+      "main": [[ { "node": "Wait All Branches", "type": "main", "index": 3 } ]]
+    },
+    "Calc SRV-CHG": {
+      "main": [[ { "node": "Wait All Branches", "type": "main", "index": 4 } ]]
+    },
+    "Wait All Branches": {
+      "main": [[ { "node": "Build Batch Payload", "type": "main", "index": 0 } ]]
+    },
+    "Build Batch Payload": {
+      "main": [[ { "node": "POST Ingest Batch", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "jira" },
+    { "name": "sdit" },
+    { "name": "weekly" },
+    { "name": "kpi" }
+  ]
+}

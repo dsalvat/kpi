@@ -1,0 +1,256 @@
+{
+  "name": "SDIT Weekly CSAT — Satisfacció Global + Response Rate",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": 1,
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Monday 07:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Year-to-date range for cumulative CSAT\nconst now = new Date();\nconst year = now.getFullYear();\nconst yearStart = `${year}-01-01`;\nconst today = now.toISOString().split('T')[0];\n\n// ISO week number for this measurement point\nconst jan1 = new Date(year, 0, 1);\nconst weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n\nreturn [{\n  json: {\n    yearStart,\n    today,\n    year,\n    week: weekNum,\n    jiraBaseUrl: 'https://YOUR_DOMAIN.atlassian.net',\n    serviceDeskId: 'YOUR_SERVICE_DESK_ID',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
+      },
+      "id": "calc-dates",
+      "name": "Calculate YTD Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type IN (\"[System] Incident\", \"[System] Service request\", \"[System] Service request with approvals\") AND resolved >= \"{{ $json.yearStart }}\""
+            },
+            {
+              "name": "maxResults",
+              "value": "5000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "total-resolved",
+      "name": "JQL Total Resolved YTD",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "JIRA_CREDENTIAL_ID",
+          "name": "Jira Cloud Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate YTD Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type IN (\"[System] Incident\", \"[System] Service request\", \"[System] Service request with approvals\") AND resolved >= \"{{ $('Calculate YTD Range').first().json.yearStart }}\" AND resolved <= \"{{ $('Calculate YTD Range').first().json.today }}\""
+            },
+            {
+              "name": "fields",
+              "value": "key"
+            },
+            {
+              "name": "maxResults",
+              "value": "1000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "resolved-keys",
+      "name": "JQL Resolved Issue Keys",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 400],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "JIRA_CREDENTIAL_ID",
+          "name": "Jira Cloud Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Prepare resolved issue keys for feedback lookup\n// We paginate if needed — JSM feedback is per-request\nconst issues = $('JQL Resolved Issue Keys').first().json.issues || [];\n\n// Return each issue key for the next HTTP node to iterate\nreturn issues.map(issue => ({\n  json: { issueKey: issue.key }\n}));"
+      },
+      "id": "prepare-feedback",
+      "name": "Prepare Feedback Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate YTD Range').first().json.jiraBaseUrl }}/rest/servicedeskapi/request/{{ $json.issueKey }}/feedback",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ExperimentalApi",
+              "value": "opt-in"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 300
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-feedback",
+      "name": "Fetch Feedback per Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [920, 400],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "JIRA_CREDENTIAL_ID",
+          "name": "Jira Cloud Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate CSAT ratings from all feedback responses\nconst feedbackResults = $input.all();\nconst dates = $('Calculate YTD Range').first().json;\nconst totalResolved = ($('JQL Total Resolved YTD').first().json.issues || []).length;\n\nconst ratings = [];\n\nfor (const item of feedbackResults) {\n  const feedback = item.json;\n  // JSM feedback response: { rating: { value: 1-5 }, comment: \"...\" }\n  if (feedback.rating && feedback.rating.value) {\n    ratings.push(feedback.rating.value);\n  }\n  // Alternative structure: { rating: 1-5 }\n  else if (typeof feedback.rating === 'number') {\n    ratings.push(feedback.rating);\n  }\n}\n\n// CSAT average (target: 4.75/5)\nconst avgRating = ratings.length > 0\n  ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 100) / 100\n  : 0;\n\n// Response rate (target: 10%)\nconst responseRate = totalResolved > 0\n  ? Math.round((ratings.length / totalResolved) * 10000) / 100\n  : 0;\n\nreturn [\n  {\n    json: {\n      items: [\n        {\n          kpi_code: 'SRV-CST',\n          year: dates.year,\n          month: dates.week,\n          value: avgRating,\n          notes: `Acumulat any ${dates.year}: ${ratings.length} respostes, mitjana ${avgRating}/5`,\n          workflow_id: 'jira-sdit-weekly-csat'\n        },\n        {\n          kpi_code: 'SRV-CSR',\n          year: dates.year,\n          month: dates.week,\n          value: responseRate,\n          notes: `${ratings.length}/${totalResolved} resolts amb feedback (${responseRate}%)`,\n          workflow_id: 'jira-sdit-weekly-csat'\n        }\n      ],\n      workflow_id: 'jira-sdit-weekly-csat'\n    }\n  }\n];"
+      },
+      "id": "calc-csat",
+      "name": "Calc SRV-CST + SRV-CSR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Calculate YTD Range').first().json.kpiApiUrl }}/api/v1/ingest/batch/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "KPI_API_CREDENTIAL_ID",
+          "name": "KPI Platform Ingest Token"
+        }
+      },
+      "id": "send-to-api",
+      "name": "POST Ingest Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1360, 400]
+    }
+  ],
+  "connections": {
+    "Every Monday 07:30": {
+      "main": [
+        [
+          { "node": "Calculate YTD Range", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calculate YTD Range": {
+      "main": [
+        [
+          { "node": "JQL Total Resolved YTD", "type": "main", "index": 0 },
+          { "node": "JQL Resolved Issue Keys", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "JQL Resolved Issue Keys": {
+      "main": [
+        [
+          { "node": "Prepare Feedback Lookup", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare Feedback Lookup": {
+      "main": [
+        [
+          { "node": "Fetch Feedback per Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Feedback per Request": {
+      "main": [
+        [
+          { "node": "Calc SRV-CST + SRV-CSR", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calc SRV-CST + SRV-CSR": {
+      "main": [
+        [
+          { "node": "POST Ingest Batch", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "jira" },
+    { "name": "sdit" },
+    { "name": "weekly" },
+    { "name": "csat" },
+    { "name": "kpi" }
+  ]
+}
