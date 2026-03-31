@@ -45,6 +45,7 @@ async def _enrich_kpi(db: AsyncSession, kpi: KPIDefinition, year: int | None = N
         "connector_id": kpi.connector_id,
         "connector_name": connector_name,
         "n8n_workflow_id": kpi.n8n_workflow_id,
+        "frequency": kpi.frequency,
         "is_annual_objective": kpi.is_annual_objective,
         "active": kpi.active,
         "years": years,
@@ -106,6 +107,7 @@ async def create_kpi_definition(db: AsyncSession, data: KPIDefinitionCreate) -> 
         source_type=data.source_type,
         connector_id=data.connector_id,
         n8n_workflow_id=data.n8n_workflow_id,
+        frequency=data.frequency,
         is_annual_objective=data.is_annual_objective,
         active=data.active,
     )
@@ -204,7 +206,7 @@ async def _get_latest_value(
     stmt = (
         select(KPIValue)
         .where(KPIValue.kpi_id == kpi_id)
-        .order_by(KPIValue.year.desc(), KPIValue.month.desc())
+        .order_by(KPIValue.year.desc(), KPIValue.week.desc().nullslast(), KPIValue.month.desc())
         .limit(1)
     )
     if year:
@@ -223,10 +225,11 @@ async def get_kpi_values(db: AsyncSession, code: str, year: int) -> list[KPIValu
     kpi = await get_kpi_by_code(db, code)
     if not kpi:
         return []
+    order_col = KPIValue.week if kpi.frequency == "weekly" else KPIValue.month
     stmt = (
         select(KPIValue)
         .where(KPIValue.kpi_id == kpi.id, KPIValue.year == year)
-        .order_by(KPIValue.month)
+        .order_by(order_col)
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -236,10 +239,18 @@ async def create_kpi_value(db: AsyncSession, code: str, data: KPIValueCreate) ->
     kpi = await get_kpi_by_code(db, code)
     if not kpi:
         return None
+    if kpi.frequency == "weekly":
+        month_val = 0
+        week_val = data.week
+    else:
+        month_val = data.month
+        week_val = None
+
     value = KPIValue(
         kpi_id=kpi.id,
         year=data.year,
-        month=data.month,
+        month=month_val,
+        week=week_val,
         value=data.value,
         collected_at=datetime.now(UTC),
         collection_method="manual",

@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -37,6 +37,7 @@ class KPIDefinition(Base):
     responsible_member_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("members.id", ondelete="SET NULL"), nullable=True
     )
+    frequency: Mapped[str] = mapped_column(String(10), default="monthly")  # monthly | weekly
     is_annual_objective: Mapped[bool] = mapped_column(default=False)
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -58,12 +59,23 @@ class KPIYearAssignment(Base):
 
 class KPIValue(Base):
     __tablename__ = "kpi_values"
-    __table_args__ = (UniqueConstraint("kpi_id", "year", "month", name="uq_kpi_year_month"),)
+    __table_args__ = (
+        Index(
+            "uq_kpi_year_month_monthly", "kpi_id", "year", "month",
+            unique=True, postgresql_where=text("week IS NULL"),
+        ),
+        Index(
+            "uq_kpi_year_week_weekly", "kpi_id", "year", "week",
+            unique=True, postgresql_where=text("week IS NOT NULL"),
+        ),
+        CheckConstraint("week IS NULL OR (week >= 1 AND week <= 53)", name="ck_week_range"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     kpi_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kpi_definitions.id"))
     year: Mapped[int]
     month: Mapped[int]
+    week: Mapped[int | None] = mapped_column(nullable=True)
     value: Mapped[Decimal] = mapped_column(Numeric)
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     collection_method: Mapped[str] = mapped_column(String(20))  # n8n_automatic | manual

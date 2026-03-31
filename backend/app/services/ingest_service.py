@@ -16,16 +16,42 @@ async def ingest_kpi_value(db: AsyncSession, payload: KPIIngestPayload) -> KPIVa
     if not kpi:
         return None
 
-    value = KPIValue(
-        kpi_id=kpi.id,
-        year=payload.year,
-        month=payload.month,
-        value=payload.value,
-        collected_at=datetime.now(UTC),
-        collection_method="n8n_automatic",
-        notes=payload.notes,
-    )
-    db.add(value)
+    if kpi.frequency == "weekly":
+        month_val = 0
+        week_val = payload.week or payload.month  # fallback: month field used as week number
+    else:
+        month_val = payload.month
+        week_val = None
+
+    # Upsert: update existing value or create new
+    if week_val is not None:
+        existing_stmt = select(KPIValue).where(
+            KPIValue.kpi_id == kpi.id, KPIValue.year == payload.year, KPIValue.week == week_val
+        )
+    else:
+        existing_stmt = select(KPIValue).where(
+            KPIValue.kpi_id == kpi.id, KPIValue.year == payload.year, KPIValue.month == month_val
+        )
+    existing_result = await db.execute(existing_stmt)
+    value = existing_result.scalar_one_or_none()
+
+    if value:
+        value.value = payload.value
+        value.collected_at = datetime.now(UTC)
+        value.notes = payload.notes
+    else:
+        value = KPIValue(
+            kpi_id=kpi.id,
+            year=payload.year,
+            month=month_val,
+            week=week_val,
+            value=payload.value,
+            collected_at=datetime.now(UTC),
+            collection_method="n8n_automatic",
+            notes=payload.notes,
+        )
+        db.add(value)
+
     await db.commit()
     await db.refresh(value)
 

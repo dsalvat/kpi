@@ -18,12 +18,26 @@
       "name": "Every Monday 07:30",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
-      "position": [0, 300]
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "sdit-weekly-csat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Backfill",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 400],
+      "webhookId": "sdit-weekly-csat"
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Year-to-date range for cumulative CSAT\nconst now = new Date();\nconst year = now.getFullYear();\nconst yearStart = `${year}-01-01`;\nconst today = now.toISOString().split('T')[0];\n\n// ISO week number for this measurement point\nconst jan1 = new Date(year, 0, 1);\nconst weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n\nreturn [{\n  json: {\n    yearStart,\n    today,\n    year,\n    week: weekNum,\n    jiraBaseUrl: 'https://YOUR_DOMAIN.atlassian.net',\n    serviceDeskId: 'YOUR_SERVICE_DESK_ID',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
+        "jsCode": "// Year-to-date range for cumulative CSAT\nconst now = new Date();\nconst year = now.getFullYear();\nconst yearStart = `${year}-01-01`;\nconst today = now.toISOString().split('T')[0];\n\nconst jan1 = new Date(year, 0, 1);\nconst weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n\nreturn [{\n  json: {\n    yearStart,\n    today,\n    year,\n    week: weekNum,\n    jiraBaseUrl: 'https://casaametller.atlassian.net',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
       },
       "id": "calc-dates",
       "name": "Calculate YTD Range",
@@ -195,6 +209,17 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [1360, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', week: $('Calculate YTD Range').first().json.week, year: $('Calculate YTD Range').first().json.year, result: $json }) }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1560, 400]
     }
   ],
   "connections": {
@@ -202,6 +227,20 @@
       "main": [
         [
           { "node": "Calculate YTD Range", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Webhook Backfill": {
+      "main": [
+        [
+          { "node": "Calculate YTD Range", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "POST Ingest Batch": {
+      "main": [
+        [
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
         ]
       ]
     },

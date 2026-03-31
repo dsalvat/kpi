@@ -40,7 +40,7 @@ async def list_scorecards(
         scores = item["scores"]
         # Enrich indicators
         for ind in sc.indicators:
-            enriched = svc._enrich_indicator(ind, year)
+            enriched = await svc._enrich_indicator(ind, year, db)
             ind.current_value = enriched["current_value"]
             ind.progress = enriched["progress"]
             ind.status = enriched["status"]
@@ -62,12 +62,12 @@ async def get_scorecard_tree(
     """Hierarchical view: department → areas → teams with scores."""
     tree = await svc.get_scorecard_tree(db, company_id, year)
     # Serialize scorecards within tree nodes
-    def serialize_node(node):
+    async def serialize_node(node):
         sc = node.get("scorecard")
         sc_data = None
         if sc:
             for ind in sc.indicators:
-                enriched = svc._enrich_indicator(ind, year)
+                enriched = await svc._enrich_indicator(ind, year, db)
                 ind.current_value = enriched["current_value"]
                 ind.progress = enriched["progress"]
                 ind.status = enriched["status"]
@@ -77,6 +77,9 @@ async def get_scorecard_tree(
             sc_data.overall_score = node.get("overall_score")
             sc_data.org_entity_name = node.get("org_entity_name")
             sc_data.responsible_name = node.get("responsible_name")
+        children = []
+        for c in node.get("children", []):
+            children.append(await serialize_node(c))
         return {
             "org_level": node["org_level"],
             "org_entity_id": node["org_entity_id"],
@@ -86,9 +89,12 @@ async def get_scorecard_tree(
             "operational_score": node.get("operational_score"),
             "management_score": node.get("management_score"),
             "scorecard": sc_data,
-            "children": [serialize_node(c) for c in node.get("children", [])],
+            "children": children,
         }
-    return [serialize_node(n) for n in tree]
+    result = []
+    for n in tree:
+        result.append(await serialize_node(n))
+    return result
 
 
 @router.get("/{scorecard_id}", response_model=ScorecardRead)
@@ -99,10 +105,10 @@ async def get_scorecard(
     sc = await svc.get_scorecard(db, scorecard_id)
     if not sc:
         raise HTTPException(status_code=404, detail="Scorecard not found")
-    scores = svc._compute_scores(sc, sc.year)
+    scores = await svc._compute_scores(sc, sc.year, db)
     entity_name, resp_name = await svc._get_org_entity_info(db, sc.org_level, sc.org_entity_id)
     for ind in sc.indicators:
-        enriched = svc._enrich_indicator(ind, sc.year)
+        enriched = await svc._enrich_indicator(ind, sc.year, db)
         ind.current_value = enriched["current_value"]
         ind.progress = enriched["progress"]
         ind.status = enriched["status"]

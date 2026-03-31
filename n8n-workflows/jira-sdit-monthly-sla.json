@@ -268,8 +268,81 @@
     },
     {
       "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Month Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type IN (\"[System] Incident\", \"[System] Service request\", \"[System] Service request with approvals\") AND resolved >= \"{{ $('Calculate Month Range').first().json.monthStart }}\" AND resolved <= \"{{ $('Calculate Month Range').first().json.monthEnd }}\""
+            },
+            { "name": "fields", "value": "key,worklog" },
+            { "name": "maxResults", "value": "500" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "resolved-with-worklogs",
+      "name": "JQL Resolved + Worklogs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 1100],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── SRV-12: Peticions Ateses/mes ──\n// ── SRV-11: Cost per Tiquet (worklogs × 25€/h / resolts) ──\nconst issues = $('JQL Resolved + Worklogs').first().json.issues || [];\nconst dates = $('Calculate Month Range').first().json;\nconst HOURLY_RATE = 25;\nconst monthStartMs = new Date(dates.monthStart).getTime();\nconst monthEndMs = new Date(dates.monthEnd + 'T23:59:59Z').getTime();\n\nconst resolvedCount = issues.length;\n\n// Sum worklogs within the month\nlet totalSeconds = 0;\nfor (const issue of issues) {\n  const worklogs = issue.fields?.worklog?.worklogs || [];\n  for (const wl of worklogs) {\n    const started = new Date(wl.started).getTime();\n    if (started >= monthStartMs && started <= monthEndMs) {\n      totalSeconds += (wl.timeSpentSeconds || 0);\n    }\n  }\n}\nconst totalHours = totalSeconds / 3600;\nconst totalCost = totalHours * HOURLY_RATE;\nconst costPerTicket = resolvedCount > 0 ? Math.round((totalCost / resolvedCount) * 100) / 100 : 0;\n\nreturn [\n  { json: { kpi_code: 'SRV-12', year: dates.year, month: dates.month, value: resolvedCount, notes: `${resolvedCount} tickets resolts`, workflow_id: 'jira-sdit-monthly-sla' } },\n  { json: { kpi_code: 'SRV-11', year: dates.year, month: dates.month, value: costPerTicket, notes: `${Math.round(totalHours)}h × ${HOURLY_RATE}€/h = ${Math.round(totalCost)}€ / ${resolvedCount} tickets`, workflow_id: 'jira-sdit-monthly-sla' } }\n];"
+      },
+      "id": "calc-resolved-cost",
+      "name": "Calc SRV-12 + SRV-11",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 1100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Calculate Month Range').first().json.jiraBaseUrl }}/rest/api/3/search/jql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jql",
+              "value": "=project = SDIT AND type = \"[System] Change\" AND created >= \"{{ $('Calculate Month Range').first().json.monthStart }}\" AND created <= \"{{ $('Calculate Month Range').first().json.monthEnd }}\""
+            },
+            { "name": "maxResults", "value": "5000" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "changes-created",
+      "name": "JQL Changes Created",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 1300],
+      "credentials": { "httpBasicAuth": { "id": "JIRA_CREDENTIAL_ID", "name": "Jira Cloud Basic Auth" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── SRV-CHR: Peticions de Canvi al mes ──\nconst issues = $('JQL Changes Created').first().json.issues || [];\nconst dates = $('Calculate Month Range').first().json;\nreturn [\n  { json: { kpi_code: 'SRV-CHR', year: dates.year, month: dates.month, value: issues.length, notes: `${issues.length} changes creats`, workflow_id: 'jira-sdit-monthly-sla' } }\n];"
+      },
+      "id": "calc-changes-created",
+      "name": "Calc SRV-CHR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 1300]
+    },
+    {
+      "parameters": {
         "mode": "append",
-        "numberInputs": 3
+        "numberInputs": 6
       },
       "id": "merge-wait",
       "name": "Wait All Branches",
@@ -280,7 +353,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// All items from 3 branches are now merged (appended)\n// Each item has a .json with kpi_code, year, month, value, notes, workflow_id\nconst allItems = $input.all().map(item => item.json);\n\nreturn [{\n  json: {\n    items: allItems,\n    workflow_id: 'jira-sdit-monthly-sla'\n  }\n}];"
+        "jsCode": "// All items from 6 branches are now merged (appended)\n// Each item has a .json with kpi_code, year, month, value, notes, workflow_id\nconst allItems = $input.all().map(item => item.json);\n\nreturn [{\n  json: {\n    items: allItems,\n    workflow_id: 'jira-sdit-monthly-sla'\n  }\n}];"
       },
       "id": "build-batch",
       "name": "Build Batch Payload",
@@ -335,7 +408,9 @@
           { "node": "JQL All Resolved Issues", "type": "main", "index": 0 },
           { "node": "JQL Incidents Sistemes", "type": "main", "index": 0 },
           { "node": "JQL FCR Total Resolved", "type": "main", "index": 0 },
-          { "node": "JQL FCR Escalated", "type": "main", "index": 0 }
+          { "node": "JQL FCR Escalated", "type": "main", "index": 0 },
+          { "node": "JQL Resolved + Worklogs", "type": "main", "index": 0 },
+          { "node": "JQL Changes Created", "type": "main", "index": 0 }
         ]
       ]
     },
@@ -406,6 +481,34 @@
       "main": [
         [
           { "node": "Wait All Branches", "type": "main", "index": 2 }
+        ]
+      ]
+    },
+    "JQL Resolved + Worklogs": {
+      "main": [
+        [
+          { "node": "Calc SRV-12 + SRV-11", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calc SRV-12 + SRV-11": {
+      "main": [
+        [
+          { "node": "Wait All Branches", "type": "main", "index": 3 }
+        ]
+      ]
+    },
+    "JQL Changes Created": {
+      "main": [
+        [
+          { "node": "Calc SRV-CHR", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calc SRV-CHR": {
+      "main": [
+        [
+          { "node": "Wait All Branches", "type": "main", "index": 4 }
         ]
       ]
     },

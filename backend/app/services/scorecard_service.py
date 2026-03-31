@@ -7,6 +7,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.kpi import KPIDefinition, KPIValue
 from app.models.scorecard import IndicatorValue, Scorecard, ScorecardIndicator
 from app.models.organization import Area, Department, Member, Team
 from app.services.calculations import (
@@ -27,14 +28,66 @@ def _scorecard_load_options():
 
 # ── Helpers ──
 
-def _enrich_indicator(ind: ScorecardIndicator, year: int) -> dict:
-    """Compute progress and status for a single indicator."""
-    # Find latest value for the year
-    year_values = [v for v in ind.values if v.year == year]
+async def _enrich_indicator(
+    ind: ScorecardIndicator, year: int, db: AsyncSession | None = None,
+) -> dict:
+    """Compute progress and status for a single indicator.
+
+    If the indicator is linked to a KPI definition, reads the latest KPIValue
+    instead of manual IndicatorValue entries.
+    """
     current_value = None
-    if year_values:
-        latest = max(year_values, key=lambda v: (v.period, v.collected_at))
-        current_value = float(latest.value)
+
+    if ind.kpi_definition_id and db:
+        # Linked to automated KPI — read from kpi_values
+        kpi_stmt = select(KPIDefinition).where(KPIDefinition.id == ind.kpi_definition_id)
+        kpi_result = await db.execute(kpi_stmt)
+        kpi_def = kpi_result.scalar_one_or_none()
+
+        if kpi_def:
+            if ind.indicator_type == "count":
+                # Count breaches: how many periods the KPI exceeded its own target
+                all_vals_stmt = (
+                    select(KPIValue)
+                    .where(KPIValue.kpi_id == kpi_def.id, KPIValue.year == year)
+                )
+                all_vals_result = await db.execute(all_vals_stmt)
+                all_vals = all_vals_result.scalars().all()
+                kpi_target = float(kpi_def.target)
+                breach_count = 0
+                for v in all_vals:
+                    val = float(v.value)
+                    if kpi_def.direction == "lower_better" and val > kpi_target:
+                        breach_count += 1
+                    elif kpi_def.direction == "higher_better" and val < kpi_target:
+                        breach_count += 1
+                current_value = float(breach_count)
+            else:
+                # Default: get latest value
+                if kpi_def.frequency == "weekly":
+                    val_stmt = (
+                        select(KPIValue)
+                        .where(KPIValue.kpi_id == kpi_def.id, KPIValue.year == year)
+                        .order_by(KPIValue.week.desc().nullslast())
+                        .limit(1)
+                    )
+                else:
+                    val_stmt = (
+                        select(KPIValue)
+                        .where(KPIValue.kpi_id == kpi_def.id, KPIValue.year == year)
+                        .order_by(KPIValue.month.desc())
+                        .limit(1)
+                    )
+                val_result = await db.execute(val_stmt)
+                kpi_val = val_result.scalar_one_or_none()
+                if kpi_val:
+                    current_value = float(kpi_val.value)
+    else:
+        # Manual values from indicator_values table
+        year_values = [v for v in ind.values if v.year == year]
+        if year_values:
+            latest = max(year_values, key=lambda v: (v.period, v.collected_at))
+            current_value = float(latest.value)
 
     progress = indicator_progress(
         current_value, float(ind.target_value), ind.direction, ind.indicator_type
@@ -50,7 +103,7 @@ def _enrich_indicator(ind: ScorecardIndicator, year: int) -> dict:
     }
 
 
-def _compute_scores(scorecard: Scorecard, year: int) -> dict:
+async def _compute_scores(scorecard: Scorecard, year: int, db: AsyncSession) -> dict:
     """Compute operational_score, management_score, overall_score."""
     op_indicators = []
     mgmt_indicators = []
@@ -58,7 +111,7 @@ def _compute_scores(scorecard: Scorecard, year: int) -> dict:
     for ind in scorecard.indicators:
         if not ind.active:
             continue
-        enriched = _enrich_indicator(ind, year)
+        enriched = await _enrich_indicator(ind, year, db)
         entry = {"progress": enriched["progress"], "weight_pct": float(ind.weight_pct)}
         if ind.category == "operational":
             op_indicators.append(entry)
@@ -129,7 +182,7 @@ async def list_scorecards(
 
     output = []
     for sc in scorecards:
-        scores = _compute_scores(sc, year)
+        scores = await _compute_scores(sc, year, db)
         entity_name, resp_name = await _get_org_entity_info(db, sc.org_level, sc.org_entity_id)
         output.append({
             "scorecard": sc,

@@ -2,6 +2,7 @@ import type { SourceType } from "./connector";
 
 export type KPIStatus = "ok" | "warning" | "ko" | "no_data";
 export type KPIGroup = "serveis" | "projectes" | "valor";
+export type KPIFrequency = "monthly" | "weekly";
 
 export interface KPIDefinition {
   id: string;
@@ -19,6 +20,7 @@ export interface KPIDefinition {
   connector_id: string | null;
   connector_name: string | null;
   n8n_workflow_id: string | null;
+  frequency: KPIFrequency;
   is_annual_objective: boolean;
   active: boolean;
   years: number[];
@@ -41,6 +43,7 @@ export interface KPIDefinitionCreate {
   source_type?: SourceType;
   connector_id?: string | null;
   n8n_workflow_id?: string;
+  frequency?: KPIFrequency;
   is_annual_objective?: boolean;
   active?: boolean;
   years: number[];
@@ -60,6 +63,7 @@ export interface KPIDefinitionUpdate {
   source_type?: SourceType;
   connector_id?: string | null;
   n8n_workflow_id?: string | null;
+  frequency?: KPIFrequency;
   is_annual_objective?: boolean;
   active?: boolean;
   years?: number[];
@@ -69,6 +73,7 @@ export interface KPIValue {
   id: string;
   year: number;
   month: number;
+  week: number | null;
   value: number;
   collected_at: string;
   collection_method: string;
@@ -77,7 +82,8 @@ export interface KPIValue {
 
 export interface KPIValueCreate {
   year: number;
-  month: number;
+  month?: number;
+  week?: number;
   value: number;
   notes?: string;
 }

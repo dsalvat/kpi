@@ -8,7 +8,8 @@ from pydantic import BaseModel
 class KPIIngestPayload(BaseModel):
     kpi_code: str
     year: int
-    month: int
+    month: int = 0
+    week: int | None = None
     value: Decimal
     notes: str | None = None
     workflow_id: str | None = None

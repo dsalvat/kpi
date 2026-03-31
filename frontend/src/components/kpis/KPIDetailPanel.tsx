@@ -53,18 +53,32 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  // Build chart data: all 12 months, fill missing with null
-  const chartData = MONTHS.map((label, i) => {
-    const month = i + 1;
-    const entry = values?.find((v) => v.month === month);
-    return {
-      month: label,
-      monthNum: month,
-      value: entry ? Number(entry.value) : null,
-      target: Number(kpi.target),
-      notes: entry?.notes ?? null,
-    };
-  });
+  const isWeekly = kpi.frequency === "weekly";
+
+  // Build chart data: 12 months or 53 weeks
+  const chartData = isWeekly
+    ? Array.from({ length: 53 }, (_, i) => {
+        const week = i + 1;
+        const entry = values?.find((v) => v.week === week);
+        return {
+          period: `S${week}`,
+          periodNum: week,
+          value: entry ? Number(entry.value) : null,
+          target: Number(kpi.target),
+          notes: entry?.notes ?? null,
+        };
+      })
+    : MONTHS.map((label, i) => {
+        const month = i + 1;
+        const entry = values?.find((v) => v.month === month);
+        return {
+          period: label,
+          periodNum: month,
+          value: entry ? Number(entry.value) : null,
+          target: Number(kpi.target),
+          notes: entry?.notes ?? null,
+        };
+      });
 
   const valuesWithData = chartData.filter((d) => d.value !== null);
 
@@ -147,7 +161,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
         <div className="px-6 pt-5 pb-2">
           <div className="mb-4 flex items-center justify-between">
             <h4 className="text-[13px] font-medium text-text-secondary">
-              Evolucio mensual
+              {isWeekly ? "Evolucio setmanal" : "Evolucio mensual"}
             </h4>
             {trend && (
               <div
@@ -164,7 +178,7 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
                   <Minus className="h-3.5 w-3.5" strokeWidth={2} />
                 )}
                 {trend.diff > 0 ? "+" : ""}
-                {formatNumber(trend.diff)} vs. mes anterior
+                {formatNumber(trend.diff)} vs. {isWeekly ? "setmana" : "mes"} anterior
               </div>
             )}
           </div>
@@ -183,10 +197,11 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
                   vertical={false}
                 />
                 <XAxis
-                  dataKey="month"
+                  dataKey="period"
                   tick={{ fontSize: 11, fill: themeColors.tickFill }}
                   tickLine={false}
                   axisLine={{ stroke: themeColors.axis }}
+                  interval={isWeekly ? 3 : 0}
                 />
                 <YAxis
                   tick={{ fontSize: 11, fill: themeColors.tickFill }}
@@ -234,14 +249,14 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
         {/* Read-only values table */}
         <div className="px-6 pb-6 pt-2">
           <h4 className="mb-3 text-[13px] font-medium text-text-secondary">
-            Valors mensuals
+            {isWeekly ? "Valors setmanals" : "Valors mensuals"}
           </h4>
-          <div className="overflow-hidden rounded-lg border border-border-subtle">
+          <div className={cn("overflow-hidden rounded-lg border border-border-subtle", isWeekly && "max-h-[400px] overflow-y-auto")}>
             <table className="w-full text-[12px]">
               <thead>
                 <tr className="border-b border-border-subtle bg-overlay-subtle">
                   <th className="px-3 py-2 text-left font-medium text-text-tertiary">
-                    Mes
+                    {isWeekly ? "Setmana" : "Mes"}
                   </th>
                   <th className="px-3 py-2 text-right font-medium text-text-tertiary">
                     Valor
@@ -266,11 +281,11 @@ export function KPIDetailPanel({ kpi, onClose }: KPIDetailPanelProps) {
                   }
                   return (
                     <tr
-                      key={d.monthNum}
+                      key={d.periodNum}
                       className="border-b border-border-subtle last:border-b-0 transition-colors hover:bg-overlay-subtle"
                     >
                       <td className="px-3 py-1.5 text-text-secondary">
-                        {MONTHS_FULL[d.monthNum - 1]}
+                        {isWeekly ? `Setmana ${d.periodNum}` : MONTHS_FULL[d.periodNum - 1]}
                       </td>
                       <td className="px-3 py-1.5 text-right">
                         {hasValue ? (

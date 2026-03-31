@@ -299,6 +299,11 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
             <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-text-tertiary">
               {freqLabel}
             </span>
+            {indicator.kpi_definition_id && (
+              <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-emerald-700">
+                Automàtic
+              </span>
+            )}
           </div>
           {indicator.description && (
             <p className="mt-0.5 truncate text-[11px] text-text-tertiary">{indicator.description}</p>
@@ -335,13 +340,15 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
 
         {/* Action buttons */}
         <div className="flex gap-0.5">
-          <button
-            onClick={() => { setShowForm(!showForm); setShowConfig(false); }}
-            className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-secondary/10 hover:text-secondary group-hover:opacity-100"
-            title="Registrar valor"
-          >
-            <ClipboardList className="h-3.5 w-3.5" />
-          </button>
+          {!indicator.kpi_definition_id && (
+            <button
+              onClick={() => { setShowForm(!showForm); setShowConfig(false); }}
+              className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-secondary/10 hover:text-secondary group-hover:opacity-100"
+              title="Registrar valor"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => { setShowConfig(!showConfig); setShowForm(false); }}
             className="rounded-md p-1 text-text-tertiary opacity-0 transition-all hover:bg-amber-500/10 hover:text-amber-600 group-hover:opacity-100"
@@ -355,8 +362,8 @@ function IndicatorRow({ indicator, year }: { indicator: ScorecardIndicator; year
       {/* Config panel */}
       {showConfig && <IndicatorConfigPanel indicator={indicator} />}
 
-      {/* Inline value form */}
-      {showForm && (
+      {/* Inline value form (hidden for KPI-linked indicators) */}
+      {showForm && !indicator.kpi_definition_id && (
         <div className="ml-16 mr-4 mb-2 rounded-lg border border-border bg-surface p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>

@@ -91,6 +91,7 @@ function buildEmptyForm(group: KPIGroup = "serveis"): KPIDefinitionCreate {
     source: "manual",
     source_type: "manual",
     connector_id: null,
+    frequency: "monthly",
     active: true,
     years: [CURRENT_YEAR],
   };
@@ -547,6 +548,7 @@ function KPIForm({
         source_type: kpi.source_type ?? "manual",
         connector_id: kpi.connector_id ?? null,
         n8n_workflow_id: kpi.n8n_workflow_id ?? undefined,
+        frequency: kpi.frequency ?? "monthly",
         is_annual_objective: kpi.is_annual_objective ?? false,
         active: kpi.active,
         years: [...kpi.years],
@@ -615,6 +617,7 @@ function KPIForm({
           source: form.source,
           source_type: form.source_type,
           connector_id: form.source_type === "manual" ? null : form.connector_id,
+          frequency: form.frequency,
           is_annual_objective: form.is_annual_objective,
           active: form.active,
           years: form.years,
@@ -871,6 +874,30 @@ function KPIForm({
                 )}
               >
                 {y}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Frequency selector */}
+        <div>
+          <label className="mb-1.5 block text-[12px] font-medium text-text-secondary">
+            Frequencia
+          </label>
+          <div className="flex gap-2">
+            {(["monthly", "weekly"] as const).map((freq) => (
+              <button
+                key={freq}
+                type="button"
+                onClick={() => setField("frequency", freq)}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                  form.frequency === freq
+                    ? "bg-secondary text-white"
+                    : "border border-border bg-overlay-muted text-text-tertiary hover:text-text-secondary hover:bg-overlay-hover",
+                )}
+              >
+                {freq === "monthly" ? "Mensual" : "Setmanal"}
               </button>
             ))}
           </div>

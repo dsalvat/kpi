@@ -17,12 +17,26 @@
       "name": "Every Monday 07:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
-      "position": [0, 500]
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "sdit-weekly-ops",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Backfill",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 600],
+      "webhookId": "sdit-weekly-ops"
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const now = new Date();\nconst dayOfWeek = now.getDay();\nconst weekEnd = new Date(now);\nweekEnd.setDate(now.getDate() - (dayOfWeek === 0 ? 0 : dayOfWeek));\nweekEnd.setHours(23, 59, 59, 999);\nconst weekStart = new Date(weekEnd);\nweekStart.setDate(weekEnd.getDate() - 6);\nweekStart.setHours(0, 0, 0, 0);\nconst fmt = (d) => d.toISOString().split('T')[0];\nconst jan1 = new Date(weekEnd.getFullYear(), 0, 1);\nconst weekNum = Math.ceil(((weekEnd - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n\nreturn [{\n  json: {\n    weekStart: fmt(weekStart),\n    weekEnd: fmt(weekEnd),\n    year: weekEnd.getFullYear(),\n    week: weekNum,\n    jiraBaseUrl: 'https://casaametller.atlassian.net',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
+        "jsCode": "// Accept optional ?year=YYYY&week=WW from webhook, or auto-detect previous week\nconst input = $input.first().json;\nconst paramYear = input.query?.year ? parseInt(input.query.year) : null;\nconst paramWeek = input.query?.week ? parseInt(input.query.week) : null;\n\nlet weekStart, weekEnd, year, weekNum;\n\nif (paramYear && paramWeek) {\n  // Calculate date range from ISO week number\n  year = paramYear;\n  weekNum = paramWeek;\n  // ISO week 1 starts on the Monday of the week containing Jan 4th\n  const jan4 = new Date(year, 0, 4);\n  const dayOfWeek = jan4.getDay() || 7; // Mon=1..Sun=7\n  const isoWeek1Monday = new Date(jan4);\n  isoWeek1Monday.setDate(jan4.getDate() - dayOfWeek + 1);\n  weekStart = new Date(isoWeek1Monday);\n  weekStart.setDate(isoWeek1Monday.getDate() + (weekNum - 1) * 7);\n  weekEnd = new Date(weekStart);\n  weekEnd.setDate(weekStart.getDate() + 6);\n} else {\n  // Auto: previous week (Mon-Sun)\n  const now = new Date();\n  const dow = now.getDay();\n  weekEnd = new Date(now);\n  weekEnd.setDate(now.getDate() - (dow === 0 ? 0 : dow));\n  weekStart = new Date(weekEnd);\n  weekStart.setDate(weekEnd.getDate() - 6);\n  year = weekEnd.getFullYear();\n  const jan1 = new Date(year, 0, 1);\n  weekNum = Math.ceil(((weekEnd - jan1) / 86400000 + jan1.getDay() + 1) / 7);\n}\n\nconst fmt = (d) => d.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    weekStart: fmt(weekStart),\n    weekEnd: fmt(weekEnd),\n    year,\n    week: weekNum,\n    jiraBaseUrl: 'https://casaametller.atlassian.net',\n    kpiApiUrl: 'http://backend:8000'\n  }\n}];"
       },
       "id": "calc-dates",
       "name": "Calculate Week Range",
@@ -349,11 +363,28 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [1840, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', week: $('Calculate Week Range').first().json.week, year: $('Calculate Week Range').first().json.year, result: $json }) }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2060, 500]
     }
   ],
   "connections": {
     "Every Monday 07:00": {
       "main": [[ { "node": "Calculate Week Range", "type": "main", "index": 0 } ]]
+    },
+    "Webhook Backfill": {
+      "main": [[ { "node": "Calculate Week Range", "type": "main", "index": 0 } ]]
+    },
+    "POST Ingest Batch": {
+      "main": [[ { "node": "Respond to Webhook", "type": "main", "index": 0 } ]]
     },
     "Calculate Week Range": {
       "main": [[

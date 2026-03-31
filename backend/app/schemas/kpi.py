@@ -21,6 +21,7 @@ class KPIDefinitionRead(BaseModel):
     connector_id: uuid.UUID | None = None
     connector_name: str | None = None
     n8n_workflow_id: str | None = None
+    frequency: str = "monthly"
     is_annual_objective: bool = False
     active: bool
     years: list[int] = []
@@ -45,6 +46,7 @@ class KPIDefinitionCreate(BaseModel):
     source_type: str = Field(default="manual", pattern=r"^(manual|api_rest|ai_agent|mcp)$")
     connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
+    frequency: str = Field(default="monthly", pattern=r"^(monthly|weekly)$")
     is_annual_objective: bool = False
     active: bool = True
     years: list[int] = []
@@ -64,6 +66,7 @@ class KPIDefinitionUpdate(BaseModel):
     source_type: str | None = None
     connector_id: uuid.UUID | None = None
     n8n_workflow_id: str | None = None
+    frequency: str | None = None
     is_annual_objective: bool | None = None
     active: bool | None = None
     years: list[int] | None = None
@@ -73,6 +76,7 @@ class KPIValueRead(BaseModel):
     id: uuid.UUID
     year: int
     month: int
+    week: int | None = None
     value: Decimal
     collected_at: datetime
     collection_method: str
@@ -83,7 +87,8 @@ class KPIValueRead(BaseModel):
 
 class KPIValueCreate(BaseModel):
     year: int = Field(ge=2020, le=2100)
-    month: int = Field(ge=1, le=12)
+    month: int = Field(default=0, ge=0, le=12)
+    week: int | None = Field(default=None, ge=1, le=53)
     value: Decimal
     notes: str | None = None
 
